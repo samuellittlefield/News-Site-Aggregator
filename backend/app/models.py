@@ -1,0 +1,97 @@
+from datetime import datetime, timezone
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text, Date
+from sqlalchemy.orm import relationship, declarative_base
+
+Base = declarative_base()
+
+
+class Trend(Base):
+    __tablename__ = "trends"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    traffic_volume = Column(String, nullable=True)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    first_seen_at = Column(DateTime(timezone=True), nullable=True)
+    appearance_count = Column(Integer, default=1, nullable=False)
+    category = Column(String, nullable=True)
+    velocity_abs = Column(Integer, default=0, nullable=False)
+    velocity_pct = Column(Integer, default=0, nullable=False)
+    rank_velocity = Column(Integer, default=0, nullable=False)
+    source = Column(String, default="rss", nullable=False)
+    geo = Column(String, default="US")
+    is_active = Column(Boolean, default=True)
+
+    articles = relationship("Article", back_populates="trend", cascade="all, delete-orphan")
+    summary = relationship("Summary", back_populates="trend", uselist=False, cascade="all, delete-orphan")
+    wiki_pages = relationship(
+        "WikiPage", back_populates="trend", cascade="all, delete-orphan",
+        order_by="WikiPage.search_rank",
+    )
+    snapshots = relationship("TrendSnapshot", back_populates="trend", cascade="all, delete-orphan")
+
+
+class Article(Base):
+    __tablename__ = "articles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    trend_id = Column(Integer, ForeignKey("trends.id"), nullable=False)
+    headline = Column(String(500), nullable=True)
+    url = Column(String, nullable=True)
+    source = Column(String, nullable=True)
+    published_at = Column(DateTime(timezone=True), nullable=True)
+    description = Column(Text, nullable=True)
+
+    trend = relationship("Trend", back_populates="articles")
+
+
+class Summary(Base):
+    __tablename__ = "summaries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    trend_id = Column(Integer, ForeignKey("trends.id"), nullable=False, unique=True)
+    body = Column(Text, nullable=False)
+    generated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    trend = relationship("Trend", back_populates="summary")
+
+
+class TrendSnapshot(Base):
+    __tablename__ = "trend_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    trend_id = Column(Integer, ForeignKey("trends.id"), nullable=False)
+    traffic_volume = Column(String, nullable=True)
+    rank = Column(Integer, nullable=True)
+    captured_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    trend = relationship("Trend", back_populates="snapshots")
+
+
+class WikiPage(Base):
+    __tablename__ = "wiki_pages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    trend_id = Column(Integer, ForeignKey("trends.id"), nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    extract = Column(Text, nullable=True)
+    url = Column(String, nullable=False)
+    thumbnail_url = Column(String, nullable=True)
+    is_primary = Column(Boolean, default=True, nullable=False)
+    search_rank = Column(Integer, default=1, nullable=False)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    trend = relationship("Trend", back_populates="wiki_pages")
+    pageviews = relationship("WikiPageView", back_populates="wiki_page", cascade="all, delete-orphan")
+
+
+class WikiPageView(Base):
+    __tablename__ = "wiki_pageviews"
+
+    id = Column(Integer, primary_key=True, index=True)
+    wiki_page_id = Column(Integer, ForeignKey("wiki_pages.id"), nullable=False)
+    view_date = Column(Date, nullable=False)
+    views = Column(Integer, nullable=False)
+
+    wiki_page = relationship("WikiPage", back_populates="pageviews")

@@ -1,0 +1,23 @@
+# Python
+backend/.venv/
+backend/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Secrets — never commit
+backend/.env
+frontend/.env.local
+frontend/.env.production
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
