@@ -65,6 +65,7 @@ class TrendOut(BaseModel):
     wiki_pages: List[WikiPageOut]
     cluster_id: Optional[int]
     cluster_name: Optional[str] = None
+    is_active: bool
 
     model_config = {"from_attributes": True}
 
@@ -117,22 +118,75 @@ def rising_trends(limit: int = 5, db: Session = Depends(get_db)):
     )
 
 
+POLITICAL_KEYWORDS = [
+    "congress", "senate", "president", "election", "republican", "democrat",
+    "white house", "court", "supreme", "trump", "biden", "harris", "vote",
+    "bill", "law", "policy", "government", "gop", "political", "legislation",
+    "governor", "mayor", "primary", "rally", "campaign", "tariff",
+]
+
+
+def _is_political(trend: Trend) -> bool:
+    text = f"{trend.title} {trend.summary.body if trend.summary else ''}".lower()
+    return trend.category == "Politics" or any(kw in text for kw in POLITICAL_KEYWORDS)
+
+
 @router.get("/political", response_model=List[TrendOut])
 def political_trends(db: Session = Depends(get_db)):
-    """Active political trending topics sorted by velocity — highest activity first."""
-    trends = (
+    """Active political trending topics — keyword-broadened, sorted by velocity."""
+    active = (
         db.query(Trend)
-        .filter(Trend.is_active == True, Trend.category == "Politics")  # noqa: E712
-        .order_by(
-            Trend.rank_velocity.desc(),
-            Trend.velocity_abs.desc(),
-            Trend.appearance_count.asc(),  # breaking (count=1) sorts high
-        )
+        .filter(Trend.is_active == True)  # noqa: E712
+        .order_by(Trend.rank_velocity.desc(), Trend.velocity_abs.desc(), Trend.appearance_count.asc())
         .all()
     )
-    for t in trends:
+    results = [t for t in active if _is_political(t)]
+    for t in results:
         t.cluster_name = t.cluster.name if t.cluster else None
-    return trends
+    return results
+
+
+@router.get("/anomalies", response_model=List[TrendOut])
+def trend_anomalies(db: Session = Depends(get_db)):
+    """
+    Anomalous trends — two signals:
+    1. SPIKES: Active trends that just broke in or shot up in rank
+    2. DROPOFFS: Recently-inactive trends that had been consistently present
+       ('suddenly stopped being searched')
+    """
+    from datetime import timedelta
+    from sqlalchemy import or_
+
+    cutoff = __import__("datetime").datetime.now(__import__("datetime").timezone.utc) - timedelta(hours=6)
+
+    # Signal 1: active spikes — new or high rank velocity
+    spikes = (
+        db.query(Trend)
+        .filter(
+            Trend.is_active == True,  # noqa: E712
+            or_(Trend.appearance_count == 1, Trend.rank_velocity >= 2),
+        )
+        .order_by(Trend.rank_velocity.desc(), Trend.appearance_count.asc())
+        .all()
+    )
+
+    # Signal 2: dropoffs — was active for 3+ cycles, recently deactivated
+    dropoffs = (
+        db.query(Trend)
+        .filter(
+            Trend.is_active == False,  # noqa: E712
+            Trend.appearance_count >= 3,
+            Trend.fetched_at >= cutoff,
+        )
+        .order_by(Trend.appearance_count.desc())
+        .limit(5)
+        .all()
+    )
+
+    results = list({t.id: t for t in (spikes + dropoffs)}.values())
+    for t in results:
+        t.cluster_name = t.cluster.name if t.cluster else None
+    return results
 
 
 @router.get("/breakout", response_model=List[TrendOut])

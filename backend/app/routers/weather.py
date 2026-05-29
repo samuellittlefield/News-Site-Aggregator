@@ -81,9 +81,14 @@ class RegionalWeatherOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+REGION_ORDER = ["West Coast", "Southwest", "Mountain", "Midwest", "South", "Northeast"]
+
+
 @router.get("/regional", response_model=List[RegionalWeatherOut])
 def regional_weather(db: Session = Depends(get_db)):
-    return db.query(RegionalWeather).order_by(RegionalWeather.region).all()
+    rows = db.query(RegionalWeather).all()
+    rows.sort(key=lambda r: REGION_ORDER.index(r.region) if r.region in REGION_ORDER else 99)
+    return rows
 
 
 # ── 3-day forecast (fetched on demand) ────────────────────────────────────────

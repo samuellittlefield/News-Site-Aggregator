@@ -46,6 +46,7 @@ export interface Trend {
   wiki_pages: WikiPage[];
   cluster_id: number | null;
   cluster_name: string | null;
+  is_active?: boolean;
 }
 
 export interface ClimateEvent {
@@ -302,6 +303,19 @@ export function usePoliticalTrends() {
       .catch(() => setLoading(false));
   }, []);
   return { trends, loading };
+}
+
+export function useAnomalyTrends() {
+  const [trends, setTrends] = useState<Trend[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = () => {
+    setLoading(true);
+    get<Trend[]>("/api/trends/anomalies")
+      .then(d => { setTrends(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []);
+  return { trends, loading, refresh: load };
 }
 
 export function useExtremeWeather() {
