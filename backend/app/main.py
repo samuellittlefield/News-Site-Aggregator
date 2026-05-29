@@ -66,3 +66,60 @@ async def manual_refresh(background_tasks: BackgroundTasks):
 @app.get("/health")
 def health():
     return {"status": "healthy"}
+
+
+@app.get("/api/debug/sources")
+async def debug_sources():
+    """Test extended sources connectivity and logic without writing to DB."""
+    import httpx
+    from datetime import date, timedelta
+
+    results = {}
+
+    # Test Wikimedia
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+    headers = {"User-Agent": "TrendingNewsSite/1.0"}
+    try:
+        async with httpx.AsyncClient(headers=headers, timeout=10.0) as client:
+            r = await client.get(
+                f"https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access"
+                f"/{today.year}/{today.month:02d}/{today.day:02d}"
+            )
+        items = r.json().get("items", [{}])
+        articles = items[0].get("articles", []) if items else []
+        results["wikimedia"] = {
+            "status": r.status_code,
+            "article_count": len(articles),
+            "top_3": [a["article"] for a in articles[:3]],
+        }
+    except Exception as e:
+        results["wikimedia"] = {"error": str(e)}
+
+    # Test Reddit
+    try:
+        async with httpx.AsyncClient(headers=headers, timeout=10.0) as client:
+            r = await client.get("https://www.reddit.com/r/all/hot.json?limit=5")
+        posts = r.json().get("data", {}).get("children", [])
+        results["reddit"] = {
+            "status": r.status_code,
+            "post_count": len(posts),
+            "top_scores": [p["data"]["score"] for p in posts[:3]],
+        }
+    except Exception as e:
+        results["reddit"] = {"error": str(e)}
+
+    # Check current DB trend count by source
+    from app.database import SessionLocal
+    from app.models import Trend
+    db = SessionLocal()
+    try:
+        all_trends = db.query(Trend).filter(Trend.is_active == True).all()  # noqa
+        by_source = {}
+        for t in all_trends:
+            by_source[t.source] = by_source.get(t.source, 0) + 1
+        results["db_trends"] = by_source
+    finally:
+        db.close()
+
+    return results
