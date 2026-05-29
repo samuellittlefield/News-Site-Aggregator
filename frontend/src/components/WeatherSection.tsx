@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useExtremeWeather, useRegionalForecast, useRegionalWeather } from "../api/client";
+import { useClimateEvents, useExtremeWeather, useRegionalForecast, useRegionalWeather } from "../api/client";
 
 const EXTREME_STYLES: Record<string, string> = {
   wildfires:    "border-orange-800/60 text-orange-400",
@@ -50,10 +50,51 @@ function ForecastDrawer({ region }: { region: string }) {
   );
 }
 
+function EventDetailPanel({ category, onClose }: { category: string; onClose: () => void }) {
+  const { events } = useClimateEvents();
+  const filtered = events.filter(e => e.category === category);
+
+  return (
+    <div className="mt-3 p-4 bg-gray-950 border border-gray-700 rounded-xl space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          {filtered.length} active events
+        </p>
+        <button onClick={onClose} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
+          ✕ Close
+        </button>
+      </div>
+      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none -mx-4 px-4">
+        {filtered.map(event => (
+          <div key={event.eonet_id} className="flex-shrink-0 w-56 bg-gray-900 border border-gray-800 rounded-xl p-3 space-y-2">
+            {event.location && (
+              <p className="text-xs text-gray-400 flex items-center gap-1">
+                <svg className="w-2.5 h-2.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                </svg>
+                {event.location}
+              </p>
+            )}
+            <p className="text-xs font-medium text-white leading-snug line-clamp-2">{event.title}</p>
+            {event.ai_summary && (
+              <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{event.ai_summary}</p>
+            )}
+            <div className="flex items-center justify-between text-xs text-gray-600">
+              {event.magnitude != null && <span>{event.magnitude.toLocaleString()} {event.magnitude_unit}</span>}
+              {event.start_date && <span>{new Date(event.start_date).toLocaleDateString([], { month: "short", day: "numeric" })}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function WeatherSection() {
   const { clusters } = useExtremeWeather();
   const { regions } = useRegionalWeather();
   const [expandedRegion, setExpandedRegion] = useState<string | null>(null);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   const toggleRegion = (region: string) =>
     setExpandedRegion(prev => (prev === region ? null : region));
@@ -72,9 +113,12 @@ export function WeatherSection() {
             {clusters.map((cluster) => {
               const colorClass = EXTREME_STYLES[cluster.category] ?? "border-gray-700 text-gray-400";
               const [borderCls, textCls] = colorClass.split(" ");
+              const isExpanded = expandedCategory === cluster.category;
               return (
-                <div key={cluster.category}
-                     className={`flex-shrink-0 w-60 bg-gray-900 border ${borderCls} rounded-xl p-4 space-y-2`}>
+                <div key={cluster.category} className="flex-shrink-0 w-60 space-y-0">
+                <button
+                     onClick={() => setExpandedCategory(isExpanded ? null : cluster.category)}
+                     className={`w-full text-left bg-gray-900 border ${isExpanded ? "border-gray-500" : borderCls} hover:border-gray-500 rounded-xl p-4 space-y-2 transition-colors`}>
                   <div className="flex items-center justify-between">
                     <span className={`text-xs font-bold ${textCls} flex items-center gap-1`}>
                       <span>{cluster.icon}</span>
@@ -103,6 +147,14 @@ export function WeatherSection() {
                       <span className="text-xs text-gray-600">{formatDate(cluster.worst_date)}</span>
                     )}
                   </div>
+                  <p className="text-xs text-gray-600 text-right">tap to expand ›</p>
+                </button>
+                {isExpanded && (
+                  <EventDetailPanel
+                    category={cluster.category}
+                    onClose={() => setExpandedCategory(null)}
+                  />
+                )}
                 </div>
               );
             })}

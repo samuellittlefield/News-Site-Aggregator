@@ -353,6 +353,31 @@ export function useNews(category: string) {
   return { articles, loading };
 }
 
+export interface ServiceStatus {
+  id: number;
+  name: string;
+  indicator: string;  // none | minor | major | critical
+  description: string | null;
+  icon: string | null;
+  page_url: string | null;
+  fetched_at: string;
+}
+
+export function useServiceStatus() {
+  const [services, setServices] = useState<ServiceStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    get<ServiceStatus[]>("/api/status")
+      .then(d => { setServices(d); setLoading(false); })
+      .catch(() => setLoading(false));
+    const id = setInterval(() => {
+      get<ServiceStatus[]>("/api/status").then(setServices).catch(() => {});
+    }, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+  return { services, loading };
+}
+
 export function useAstronomy() {
   const [sky, setSky] = useState<AstronomyData | null>(null);
   const [loading, setLoading] = useState(true);

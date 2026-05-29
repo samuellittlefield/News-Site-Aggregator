@@ -17,6 +17,7 @@ from app.services import regional_weather as regional_weather_service
 from app.services import news_categories as news_categories_service
 from app.services import wikipedia_trending as wikipedia_trending_service
 from app.services import reddit_trending as reddit_trending_service
+from app.services import service_status as service_status_service
 
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
@@ -88,6 +89,17 @@ async def refresh_news():
         db.close()
 
 
+async def refresh_status():
+    logger.info("Refreshing service statuses...")
+    db = SessionLocal()
+    try:
+        await service_status_service.fetch_service_statuses(db)
+    except Exception as e:
+        logger.exception("Service status refresh failed: %s", e)
+    finally:
+        db.close()
+
+
 async def refresh_weather():
     logger.info("Refreshing regional weather...")
     db = SessionLocal()
@@ -140,6 +152,12 @@ def start_scheduler(interval_hours: int = 3):
         refresh_weather,
         IntervalTrigger(hours=3),
         id="weather_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_status,
+        IntervalTrigger(minutes=15),
+        id="status_job",
         replace_existing=True,
     )
     # Breakout job uses pytrends — enable when a reliable data source is wired in

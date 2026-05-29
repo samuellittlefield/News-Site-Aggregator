@@ -142,6 +142,18 @@ class RegionalWeather(Base):
     fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
+class ServiceStatus(Base):
+    __tablename__ = "service_status"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True)
+    indicator = Column(String, nullable=False, default="none")   # none | minor | major | critical
+    description = Column(String, nullable=True)
+    icon = Column(String, nullable=True)
+    page_url = Column(String, nullable=True)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class ClimateEvent(Base):
     __tablename__ = "climate_events"
 

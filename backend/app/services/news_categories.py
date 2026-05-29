@@ -18,12 +18,16 @@ HEADERS = {"User-Agent": "TrendingNewsSite/1.0"}
 
 FEEDS = {
     "politics": (
+        "https://news.google.com/rss/topics/CAAqJQgKIh9DQkFTRVFvSUwyMHZNRFZ4WVZZAE"
+        "?hl=en-US&gl=US&ceid=US:en"
+    ),
+    "politics_fallback": (
         "https://news.google.com/rss/search"
-        "?q=US+politics+congress+senate+president+election&hl=en-US&gl=US&ceid=US:en"
+        "?q=US+congress+senate+white+house+president+election+legislation&hl=en-US&gl=US&ceid=US:en"
     ),
     "transportation": (
         "https://news.google.com/rss/search"
-        "?q=electric+vehicles+OR+public+transit+OR+Amtrak+OR+aviation+OR+Tesla&hl=en-US&gl=US&ceid=US:en"
+        "?q=electric+vehicles+OR+EV+OR+public+transit+OR+Amtrak+OR+aviation+OR+Tesla+OR+autonomous+vehicles&hl=en-US&gl=US&ceid=US:en"
     ),
 }
 
@@ -70,6 +74,14 @@ async def fetch_news_category(category: str, db: Session) -> list:
     try:
         async with httpx.AsyncClient(headers=HEADERS, timeout=12.0) as client:
             resp = await client.get(feed_url)
+        # Fallback for politics if topic ID returns empty
+        if resp.status_code == 200 and category == "politics":
+            root = ET.fromstring(resp.text)
+            channel = root.find("channel")
+            if not channel or len(channel.findall("item")) < 3:
+                fallback_url = FEEDS.get("politics_fallback")
+                if fallback_url:
+                    resp = await client.get(fallback_url)
         resp.raise_for_status()
     except httpx.RequestError as e:
         logger.error("News feed fetch failed for %s: %s", category, e)

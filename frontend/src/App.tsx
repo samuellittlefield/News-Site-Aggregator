@@ -3,11 +3,12 @@ import { triggerRefresh, useTrends } from "./api/client";
 import { AstronomySection } from "./components/AstronomySection";
 import { NewsSegment } from "./components/NewsSegment";
 import { PoliticsSection } from "./components/PoliticsSection";
+import { ServiceStatusSection } from "./components/ServiceStatusSection";
 import { TrendCarousel } from "./components/TrendCarousel";
 import { TrendDetail } from "./components/TrendDetail";
 import { WeatherSection } from "./components/WeatherSection";
 
-const SECTION_DIVIDER = <div className="border-t border-gray-800/60" />;
+const DIVIDER = <div className="border-t border-gray-800/60" />;
 
 export default function App() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -25,18 +26,13 @@ export default function App() {
     return <TrendDetail id={selectedId} onBack={() => setSelectedId(null)} />;
   }
 
-  // Cross-reference trends for Transportation
-  const transportTrends = trends.filter(t =>
-    t.category === "Technology" || t.title.toLowerCase().match(/\b(ev|tesla|transit|train|airline|aviation|amtrak|uber|lyft|autonomous)\b/)
-  );
-
   return (
     <div className="min-h-screen bg-gray-950">
       <header className="border-b border-gray-800 sticky top-0 z-10 bg-gray-950/90 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-white tracking-tight">Situation Monitor</h1>
-            <p className="text-xs text-gray-500 mt-0.5">Trends · Weather · Politics · Transport · Sky</p>
+            <p className="text-xs text-gray-500 mt-0.5">Trends · Weather · Politics · Transport · Sky · Status</p>
           </div>
           <button onClick={handleRefresh} disabled={refreshing || loading}
             className="flex items-center gap-2 text-sm bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 px-3 py-1.5 rounded-lg transition-colors">
@@ -58,46 +54,48 @@ export default function App() {
           </div>
         )}
 
-        {/* 1 ── Top 10 Trending ───────────────────────────────────────── */}
+        {/* 1 ── Top Trending ──────────────────────────────────────────── */}
         {!error && (
-          <>
-            {loading ? (
-              <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="flex-shrink-0 w-64 h-52 bg-gray-900 rounded-xl animate-pulse" />
-                ))}
-              </div>
-            ) : (
-              <TrendCarousel trends={trends} onSelect={setSelectedId} count={trends.length} />
-            )}
-          </>
+          loading ? (
+            <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex-shrink-0 w-64 h-52 bg-gray-900 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <TrendCarousel trends={trends} onSelect={setSelectedId} count={trends.length} />
+          )
         )}
 
-        {SECTION_DIVIDER}
+        {DIVIDER}
 
         {/* 2 ── Weather & Climate ─────────────────────────────────────── */}
         <WeatherSection />
 
-        {SECTION_DIVIDER}
+        {DIVIDER}
 
         {/* 3 ── Politics ──────────────────────────────────────────────── */}
-        <PoliticsSection onSelect={setSelectedId} />
+        {/* Show velocity analytics if political topics are trending, */}
+        {/* otherwise fall back to dedicated news feed */}
+        {trends.some(t => t.category === "Politics" || (t.summary?.body ?? "").toLowerCase().includes("congress"))
+          ? <PoliticsSection onSelect={setSelectedId} />
+          : <NewsSegment category="politics" label="Politics" icon="🏛" />
+        }
 
-        {SECTION_DIVIDER}
+        {DIVIDER}
 
         {/* 4 ── Transportation ────────────────────────────────────────── */}
-        <NewsSegment
-          category="transportation"
-          label="Transportation"
-          icon="🚆"
-          trends={transportTrends}
-          onSelect={setSelectedId}
-        />
+        <NewsSegment category="transportation" label="Transportation" icon="🚆" />
 
-        {SECTION_DIVIDER}
+        {DIVIDER}
 
         {/* 5 ── Astronomy ─────────────────────────────────────────────── */}
         <AstronomySection />
+
+        {DIVIDER}
+
+        {/* 6 ── Internet Health ───────────────────────────────────────── */}
+        <ServiceStatusSection />
 
       </main>
     </div>

@@ -12,7 +12,8 @@ from app.routers import climate as climate_router
 from app.routers import weather as weather_router
 from app.routers import news as news_router
 from app.routers import astronomy as astronomy_router
-from app.scheduler import refresh_all, refresh_breakout, refresh_climate, refresh_extended_sources, refresh_news, refresh_weather, start_scheduler
+from app.routers import status as status_router
+from app.scheduler import refresh_all, refresh_breakout, refresh_climate, refresh_extended_sources, refresh_news, refresh_status, refresh_weather, start_scheduler
 from fastapi import BackgroundTasks
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
@@ -45,6 +46,7 @@ app.include_router(climate_router.router)
 app.include_router(weather_router.router)
 app.include_router(news_router.router)
 app.include_router(astronomy_router.router)
+app.include_router(status_router.router)
 
 
 async def _do_full_refresh():
@@ -54,6 +56,7 @@ async def _do_full_refresh():
     await refresh_climate()
     await refresh_news()
     await refresh_weather()
+    await refresh_status()
 
 
 @app.post("/api/refresh", summary="Manually trigger a data refresh")
