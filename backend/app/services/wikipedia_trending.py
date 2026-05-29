@@ -63,25 +63,38 @@ async def fetch_wikipedia_trending(db: Session) -> list:
     today = date.today()
     yesterday = today - timedelta(days=1)
 
+    def _url(d: date) -> str:
+        return PAGEVIEW_URL.format(year=d.year, month=d.month, day=d.day)
+
+    def _articles(resp) -> list:
+        if resp.status_code != 200:
+            return []
+        items = resp.json().get("items", [{}])
+        return items[0].get("articles", [])[:100] if items else []
+
     try:
         async with httpx.AsyncClient(headers=HEADERS, timeout=12.0) as client:
-            r_today = await client.get(
-                PAGEVIEW_URL.format(year=today.year, month=today.month, day=today.day)
-            )
-            r_yesterday = await client.get(
-                PAGEVIEW_URL.format(year=yesterday.year, month=yesterday.month, day=yesterday.day)
-            )
+            # Try today first; if 404 (UTC date ahead of data availability), fall back
+            r_today = await client.get(_url(today))
+            if r_today.status_code == 404:
+                r_today = await client.get(_url(yesterday))
+                yesterday = yesterday - timedelta(days=1)  # shift baseline back one more day
+            r_yesterday = await client.get(_url(yesterday))
 
         articles_today = {
             a["article"]: {"rank": a["rank"], "views": a["views"]}
-            for a in (r_today.json().get("items", [{}])[0].get("articles", [])[:100]
-                       if r_today.status_code == 200 else [])
+            for a in _articles(r_today)
         }
         articles_yesterday = {
             a["article"]: {"rank": a["rank"]}
-            for a in (r_yesterday.json().get("items", [{}])[0].get("articles", [])[:100]
-                       if r_yesterday.status_code == 200 else [])
+            for a in _articles(r_yesterday)
         }
+
+        if not articles_today:
+            logger.warning("Wikipedia: no articles available for any recent date")
+            return []
+
+        logger.info("Wikipedia: loaded %d articles for trending analysis", len(articles_today))
     except Exception as e:
         logger.error("Wikipedia trending fetch failed: %s", e)
         return []

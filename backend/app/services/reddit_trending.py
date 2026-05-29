@@ -47,9 +47,12 @@ async def fetch_reddit_trending(db: Session) -> list:
     try:
         async with httpx.AsyncClient(headers=HEADERS, timeout=12.0) as client:
             resp = await client.get(REDDIT_URL)
+        if resp.status_code != 200 or not resp.text.strip():
+            logger.info("Reddit: blocked or empty response (status=%s) — skipping (datacenter IPs often blocked)", resp.status_code)
+            return []
         resp.raise_for_status()
     except Exception as e:
-        logger.error("Reddit fetch failed: %s", e)
+        logger.info("Reddit fetch skipped: %s", e)
         return []
 
     posts = resp.json().get("data", {}).get("children", [])
