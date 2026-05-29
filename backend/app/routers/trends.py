@@ -66,6 +66,8 @@ class TrendOut(BaseModel):
     cluster_id: Optional[int]
     cluster_name: Optional[str] = None
     is_active: bool
+    signal_score: float
+    source: str
 
     model_config = {"from_attributes": True}
 
@@ -82,11 +84,13 @@ class TrendDetailOut(TrendOut):
 
 
 @router.get("", response_model=List[TrendOut])
-def list_trends(db: Session = Depends(get_db)):
+def list_trends(limit: int = 50, db: Session = Depends(get_db)):
+    """All active trends sorted by signal score — multi-source aggregation."""
     trends = (
         db.query(Trend)
         .filter(Trend.is_active == True)  # noqa: E712
-        .order_by(Trend.fetched_at.desc())
+        .order_by(Trend.signal_score.desc(), Trend.fetched_at.desc())
+        .limit(limit)
         .all()
     )
     for t in trends:

@@ -92,7 +92,7 @@ export function TrendCarousel({ trends, onSelect, count }: Props) {
   return (
     <section>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs text-gray-600">{count} trending topics</p>
+        <p className="text-xs text-gray-600">{count} topics · sorted by signal</p>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setMode("default")}

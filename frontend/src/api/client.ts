@@ -47,6 +47,8 @@ export interface Trend {
   cluster_id: number | null;
   cluster_name: string | null;
   is_active?: boolean;
+  signal_score: number;
+  source: string;
 }
 
 export interface ClimateEvent {

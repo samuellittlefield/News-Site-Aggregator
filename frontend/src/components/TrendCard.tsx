@@ -1,5 +1,11 @@
 import { Trend } from "../api/client";
 
+const SOURCE_BADGES: Record<string, { label: string; cls: string }> = {
+  rss:       { label: "G",  cls: "bg-blue-950 text-blue-400 border-blue-800" },
+  wikipedia: { label: "W",  cls: "bg-gray-800 text-gray-300 border-gray-600" },
+  reddit:    { label: "R",  cls: "bg-orange-950 text-orange-400 border-orange-800" },
+};
+
 const CATEGORY_STYLES: Record<string, string> = {
   Sports:        "bg-green-950 text-green-400 border-green-800",
   Politics:      "bg-red-950 text-red-400 border-red-800",
@@ -112,9 +118,17 @@ export function TrendCard({ trend, onClick }: Props) {
           </span>
         )}
 
-        <span className="text-xs text-gray-600 ml-auto">
-          {trend.geo} · {new Date(trend.fetched_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-        </span>
+        <div className="flex items-center gap-1.5 ml-auto">
+          {/* Source badge */}
+          {trend.source && trend.source !== "rss" && SOURCE_BADGES[trend.source] && (
+            <span className={`text-[10px] font-bold border rounded px-1 py-0.5 ${SOURCE_BADGES[trend.source].cls}`}>
+              {SOURCE_BADGES[trend.source].label}
+            </span>
+          )}
+          <span className="text-xs text-gray-600">
+            {new Date(trend.fetched_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        </div>
       </div>
     </button>
   );

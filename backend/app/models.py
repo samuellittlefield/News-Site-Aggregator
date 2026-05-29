@@ -32,6 +32,7 @@ class Trend(Base):
     velocity_pct = Column(Integer, default=0, nullable=False)
     rank_velocity = Column(Integer, default=0, nullable=False)
     source = Column(String, default="rss", nullable=False)
+    signal_score = Column(Float, default=0.0, nullable=False)
     cluster_id = Column(Integer, ForeignKey("trend_clusters.id", ondelete="SET NULL"), nullable=True)
     geo = Column(String, default="US")
     is_active = Column(Boolean, default=True)

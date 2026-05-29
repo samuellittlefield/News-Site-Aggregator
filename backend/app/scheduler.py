@@ -15,6 +15,8 @@ from app.services import clustering as clustering_service
 from app.services import climate as climate_service
 from app.services import regional_weather as regional_weather_service
 from app.services import news_categories as news_categories_service
+from app.services import wikipedia_trending as wikipedia_trending_service
+from app.services import reddit_trending as reddit_trending_service
 
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
@@ -56,6 +58,20 @@ async def refresh_climate():
         logger.info("Climate refresh complete — %d events", len(events))
     except Exception as e:
         logger.exception("Climate refresh failed: %s", e)
+    finally:
+        db.close()
+
+
+async def refresh_extended_sources():
+    """Fetch Wikipedia trending and Reddit hot posts to expand the trend pool."""
+    logger.info("Refreshing extended sources (Wikipedia + Reddit)...")
+    db = SessionLocal()
+    try:
+        wiki = await wikipedia_trending_service.fetch_wikipedia_trending(db)
+        reddit = await reddit_trending_service.fetch_reddit_trending(db)
+        logger.info("Extended sources: +%d Wikipedia, +%d Reddit trends", len(wiki), len(reddit))
+    except Exception as e:
+        logger.exception("Extended sources refresh failed: %s", e)
     finally:
         db.close()
 
@@ -106,6 +122,12 @@ def start_scheduler(interval_hours: int = 3):
         refresh_climate,
         IntervalTrigger(hours=6),
         id="climate_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_extended_sources,
+        IntervalTrigger(hours=2),
+        id="extended_job",
         replace_existing=True,
     )
     scheduler.add_job(

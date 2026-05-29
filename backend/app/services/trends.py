@@ -10,8 +10,20 @@ from app.models import Article, Trend, TrendSnapshot
 logger = logging.getLogger(__name__)
 
 TRENDS_RSS_URL = "https://trends.google.com/trending/rss?geo=US"
-# Namespace declared in the RSS: xmlns:ht="https://trends.google.com/trending/rss"
 HT_NS = "https://trends.google.com/trending/rss"
+
+# Traffic string → signal score (normalised so RSS and other sources are comparable)
+TRAFFIC_SIGNAL: dict = {
+    "200": 15, "500": 30, "1000": 55, "2000": 100, "5000": 175,
+    "10K": 300, "50K": 600, "100K": 900, "500K": 1500, "1M": 2000,
+}
+
+def _traffic_to_signal(traffic: str) -> float:
+    """Convert a traffic string like '2000+' or '10K+' to a signal score."""
+    if not traffic:
+        return 10.0
+    key = traffic.strip().rstrip("+").upper()
+    return float(TRAFFIC_SIGNAL.get(key, 10))
 
 
 def _ht(tag: str) -> str:
@@ -42,10 +54,13 @@ async def fetch_trends(db: Session) -> list:
 
         existing = db.query(Trend).filter(Trend.title == title).first()
         now = datetime.now(timezone.utc)
+        signal = _traffic_to_signal(traffic)
+
         if existing:
             existing.is_active = True
             existing.fetched_at = now
             existing.traffic_volume = traffic
+            existing.signal_score = signal
             existing.appearance_count = (existing.appearance_count or 0) + 1
             trend = existing
         else:
@@ -56,6 +71,7 @@ async def fetch_trends(db: Session) -> list:
                 is_active=True,
                 first_seen_at=now,
                 appearance_count=1,
+                signal_score=signal,
             )
             db.add(trend)
             db.flush()
