@@ -68,6 +68,8 @@ class TrendOut(BaseModel):
     is_active: bool
     signal_score: float
     source: str
+    sources_list: List[str] = []
+    trend_window: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

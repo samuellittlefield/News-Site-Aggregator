@@ -1,10 +1,24 @@
 import { Trend } from "../api/client";
 
-const SOURCE_BADGES: Record<string, { label: string; cls: string; title: string }> = {
-  rss:       { label: "G",  cls: "bg-blue-950 text-blue-400 border-blue-800",     title: "Google Trends" },
-  wikipedia: { label: "W",  cls: "bg-gray-800 text-gray-300 border-gray-600",     title: "Wikipedia Trending" },
-  reddit:    { label: "R",  cls: "bg-orange-950 text-orange-400 border-orange-800", title: "Reddit" },
+const SOURCE_TAG_STYLES: Record<string, { label: string; cls: string }> = {
+  google_4h:    { label: "⚡4h",  cls: "bg-amber-950 text-amber-400 border-amber-800" },
+  google_24h:   { label: "G24h", cls: "bg-blue-950 text-blue-400 border-blue-800" },
+  nyt_shared:   { label: "NYT↑", cls: "bg-gray-800 text-gray-200 border-gray-600" },
+  nyt_emailed:  { label: "NYT✉", cls: "bg-gray-800 text-gray-200 border-gray-600" },
+  nyt_home:     { label: "NYT",  cls: "bg-gray-800 text-gray-200 border-gray-600" },
+  nyt_us:       { label: "NYT",  cls: "bg-gray-800 text-gray-200 border-gray-600" },
+  nyt_world:    { label: "NYT",  cls: "bg-gray-800 text-gray-200 border-gray-600" },
+  wikipedia:    { label: "W",    cls: "bg-gray-800 text-gray-300 border-gray-600" },
+  reddit:       { label: "R",    cls: "bg-orange-950 text-orange-400 border-orange-800" },
+  nyt:          { label: "NYT",  cls: "bg-gray-800 text-gray-200 border-gray-600" },
 };
+
+function dedupeSources(sources: string[]): string[] {
+  // Collapse multiple nyt_* into one "NYT" tag
+  const hasNyt = sources.some(s => s.startsWith("nyt"));
+  const nonNyt = sources.filter(s => !s.startsWith("nyt"));
+  return hasNyt ? [...nonNyt, "nyt_home"] : nonNyt;
+}
 
 const CATEGORY_STYLES: Record<string, string> = {
   Sports:        "bg-green-950 text-green-400 border-green-800",
@@ -118,16 +132,16 @@ export function TrendCard({ trend, onClick }: Props) {
           </span>
         )}
 
-        <div className="flex items-center gap-1.5 ml-auto">
-          {/* Source badge — shown for all sources */}
-          {SOURCE_BADGES[trend.source ?? "rss"] && (
-            <span
-              title={SOURCE_BADGES[trend.source ?? "rss"].title}
-              className={`text-[10px] font-bold border rounded px-1 py-0.5 ${SOURCE_BADGES[trend.source ?? "rss"].cls}`}
-            >
-              {SOURCE_BADGES[trend.source ?? "rss"].label}
-            </span>
-          )}
+        <div className="flex items-center gap-1 ml-auto flex-wrap justify-end">
+          {/* Multi-source attribution tags */}
+          {dedupeSources(trend.sources_list ?? []).slice(0, 3).map(src => {
+            const tag = SOURCE_TAG_STYLES[src];
+            return tag ? (
+              <span key={src} className={`text-[9px] font-bold border rounded px-1 py-0.5 ${tag.cls}`}>
+                {tag.label}
+              </span>
+            ) : null;
+          })}
           <span className="text-xs text-gray-600">
             {new Date(trend.fetched_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>

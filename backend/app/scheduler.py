@@ -17,6 +17,8 @@ from app.services import regional_weather as regional_weather_service
 from app.services import news_categories as news_categories_service
 from app.services import wikipedia_trending as wikipedia_trending_service
 from app.services import reddit_trending as reddit_trending_service
+from app.services import google_trends_multi as google_trends_multi_service
+from app.services import nyt as nyt_service
 from app.services import service_status as service_status_service
 
 logger = logging.getLogger(__name__)
@@ -24,11 +26,11 @@ scheduler = AsyncIOScheduler()
 
 
 async def refresh_all():
-    logger.info("Starting scheduled refresh...")
+    logger.info("Starting scheduled refresh (multi-window Google Trends)...")
     db = SessionLocal()
     try:
-        # Trends service also parses embedded RSS articles — no external API needed
-        all_trends = await trends_service.fetch_trends(db)
+        # Use multi-window service (4h + 24h) instead of single RSS
+        all_trends = await google_trends_multi_service.fetch_google_trends_multi(db)
         from app.models import Article as ArticleModel
         for trend in all_trends:
             try:
@@ -64,13 +66,14 @@ async def refresh_climate():
 
 
 async def refresh_extended_sources():
-    """Fetch Wikipedia trending and Reddit hot posts to expand the trend pool."""
-    logger.info("Refreshing extended sources (Wikipedia + Reddit)...")
+    """Fetch Wikipedia trending, NYT, and Reddit to expand the trend pool."""
+    logger.info("Refreshing extended sources (Wikipedia + NYT + Reddit)...")
     db = SessionLocal()
     try:
-        wiki = await wikipedia_trending_service.fetch_wikipedia_trending(db)
+        wiki   = await wikipedia_trending_service.fetch_wikipedia_trending(db)
+        nyt    = await nyt_service.fetch_nyt_trending(db)
         reddit = await reddit_trending_service.fetch_reddit_trending(db)
-        logger.info("Extended sources: +%d Wikipedia, +%d Reddit trends", len(wiki), len(reddit))
+        logger.info("Extended sources: +%d Wikipedia, +%d NYT, +%d Reddit", len(wiki), len(nyt), len(reddit))
     except Exception as e:
         logger.exception("Extended sources refresh failed: %s", e)
     finally:

@@ -49,6 +49,8 @@ export interface Trend {
   is_active?: boolean;
   signal_score: number;
   source: string;
+  sources_list: string[];
+  trend_window: string | null;
 }
 
 export interface ClimateEvent {

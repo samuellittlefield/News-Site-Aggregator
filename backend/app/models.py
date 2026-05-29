@@ -33,6 +33,8 @@ class Trend(Base):
     rank_velocity = Column(Integer, default=0, nullable=False)
     source = Column(String, default="rss", nullable=False)
     signal_score = Column(Float, default=0.0, nullable=False)
+    sources_list = Column(JSONB, default=list, nullable=False)
+    trend_window = Column(String, default="24h", nullable=True)
     cluster_id = Column(Integer, ForeignKey("trend_clusters.id", ondelete="SET NULL"), nullable=True)
     geo = Column(String, default="US")
     is_active = Column(Boolean, default=True)

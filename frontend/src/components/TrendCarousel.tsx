@@ -86,12 +86,10 @@ export function TrendCarousel({ trends, onSelect, count }: Props) {
         <div className="flex items-center gap-3">
           <p className="text-xs text-gray-600">{count} topics · sorted by signal</p>
           <div className="flex items-center gap-1.5 text-[10px] text-gray-600">
-            <span className="border border-blue-800 text-blue-400 rounded px-1 font-bold">G</span>
-            <span>Google</span>
-            <span className="border border-gray-600 text-gray-400 rounded px-1 font-bold ml-1">W</span>
-            <span>Wikipedia</span>
-            <span className="border border-orange-800 text-orange-400 rounded px-1 font-bold ml-1">R</span>
-            <span>Reddit</span>
+            <span className="border border-amber-800 text-amber-400 rounded px-1 font-bold">⚡4h</span>
+            <span className="border border-blue-800 text-blue-400 rounded px-1 font-bold">G24h</span>
+            <span className="border border-gray-600 text-gray-300 rounded px-1 font-bold">NYT</span>
+            <span className="border border-gray-600 text-gray-400 rounded px-1 font-bold">W</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
