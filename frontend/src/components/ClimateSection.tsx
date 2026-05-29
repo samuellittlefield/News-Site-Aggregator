@@ -11,12 +11,15 @@ export function ClimateSection() {
     <section className="mt-10 space-y-4">
       {/* Section header */}
       <div className="flex items-center gap-2">
-        <span className="text-lg">🌍</span>
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+        </span>
         <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
           Climate &amp; Extreme Weather
         </h2>
         <span className="text-xs text-gray-600 normal-case font-normal">
-          {events.length} active events · via NASA EONET
+          {events.length} active events
         </span>
       </div>
 

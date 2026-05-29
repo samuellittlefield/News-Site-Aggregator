@@ -24,6 +24,20 @@ CATEGORIES = {
     "drought": "Drought",
 }
 
+def _extract_location(title: str) -> Optional[str]:
+    """Extract location string from EONET event title.
+    'Black Ridge Wildfire, Lincoln, Idaho' → 'Lincoln, Idaho'
+    'Flooding - Bangladesh' → 'Bangladesh'
+    'Tropical Storm Beryl' → None
+    """
+    if " - " in title:
+        return title.split(" - ", 1)[1].strip()
+    parts = [p.strip() for p in title.split(",")]
+    if len(parts) >= 2:
+        return ", ".join(parts[1:])
+    return None
+
+
 CATEGORY_ICONS = {
     "wildfires": "🔥",
     "severeStorms": "⛈",
@@ -119,6 +133,8 @@ async def fetch_climate_events(db: Session) -> list:
 
         # Upsert
         existing = db.query(ClimateEvent).filter(ClimateEvent.eonet_id == eonet_id).first()
+        location = _extract_location(title)
+
         if existing:
             existing.title = title
             existing.status = event.get("closed") and "closed" or "open"
@@ -127,6 +143,7 @@ async def fetch_climate_events(db: Session) -> list:
             existing.magnitude = magnitude
             existing.magnitude_unit = magnitude_unit
             existing.source_url = source_url
+            existing.location = location
             existing.fetched_at = now
             climate_event = existing
         else:
@@ -140,6 +157,7 @@ async def fetch_climate_events(db: Session) -> list:
                 magnitude=magnitude,
                 magnitude_unit=magnitude_unit,
                 source_url=source_url,
+                location=location,
                 fetched_at=now,
             )
             db.add(climate_event)

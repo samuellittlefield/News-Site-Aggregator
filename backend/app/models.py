@@ -126,4 +126,5 @@ class ClimateEvent(Base):
     magnitude_unit = Column(String, nullable=True)
     source_url = Column(String, nullable=True)
     ai_summary = Column(Text, nullable=True)
+    location = Column(String, nullable=True)
     fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

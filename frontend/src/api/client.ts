@@ -62,6 +62,7 @@ export interface ClimateEvent {
   magnitude_unit: string | null;
   source_url: string | null;
   ai_summary: string | null;
+  location: string | null;
   fetched_at: string;
 }
 

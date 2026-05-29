@@ -41,6 +41,7 @@ class ClimateEventOut(BaseModel):
     magnitude_unit: Optional[str]
     source_url: Optional[str]
     ai_summary: Optional[str]
+    location: Optional[str]
     fetched_at: datetime
 
     model_config = {"from_attributes": True}
@@ -71,6 +72,7 @@ def list_climate_events(db: Session = Depends(get_db)):
             magnitude_unit=e.magnitude_unit,
             source_url=e.source_url,
             ai_summary=e.ai_summary,
+            location=e.location,
             fetched_at=e.fetched_at,
         )
         result.append(out)
