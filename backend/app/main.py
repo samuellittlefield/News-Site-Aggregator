@@ -13,6 +13,7 @@ from app.routers import weather as weather_router
 from app.routers import news as news_router
 from app.routers import astronomy as astronomy_router
 from app.scheduler import refresh_all, refresh_breakout, refresh_climate, refresh_extended_sources, refresh_news, refresh_weather, start_scheduler
+from fastapi import BackgroundTasks
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
 
@@ -46,14 +47,20 @@ app.include_router(news_router.router)
 app.include_router(astronomy_router.router)
 
 
-@app.post("/api/refresh", summary="Manually trigger a data refresh")
-async def manual_refresh():
+async def _do_full_refresh():
+    """Run all refresh jobs sequentially as a background task."""
     await refresh_all()
     await refresh_extended_sources()
     await refresh_climate()
     await refresh_news()
     await refresh_weather()
-    return {"status": "ok"}
+
+
+@app.post("/api/refresh", summary="Manually trigger a data refresh")
+async def manual_refresh(background_tasks: BackgroundTasks):
+    """Returns immediately; all refresh jobs run in the background."""
+    background_tasks.add_task(_do_full_refresh)
+    return {"status": "ok", "message": "Refresh queued"}
 
 
 @app.get("/health")
