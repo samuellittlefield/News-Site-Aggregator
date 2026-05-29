@@ -212,6 +212,100 @@ export function useClimateEvents() {
   return { events, loading, refresh: load };
 }
 
+export interface ExtremeCluster {
+  category: string;
+  label: string;
+  icon: string;
+  count: number;
+  worst_title: string;
+  worst_location: string | null;
+  worst_date: string | null;
+  worst_magnitude: number | null;
+  worst_magnitude_unit: string | null;
+  worst_summary: string | null;
+  worst_source_url: string | null;
+}
+
+export interface RegionalWeather {
+  region: string;
+  city: string;
+  temp_max_f: number | null;
+  temp_min_f: number | null;
+  precipitation_mm: number | null;
+  condition: string | null;
+}
+
+export interface NewsArticle {
+  id: number;
+  category: string;
+  title: string;
+  url: string | null;
+  source: string | null;
+  published_at: string | null;
+  description: string | null;
+  ai_summary: string | null;
+}
+
+export interface AstronomyData {
+  moon: {
+    phase: string;
+    illumination: number;
+    next_full: string;
+    next_full_iso: string;
+    next_new: string;
+    is_blue_moon: boolean;
+    rise: string | null;
+    set: string | null;
+  };
+  planets: { name: string; visible: boolean; altitude: number; rise: string | null; set: string | null }[];
+  events: { title: string; date: string; date_iso: string; description: string; icon: string }[];
+  location: string;
+}
+
+export function useExtremeWeather() {
+  const [clusters, setClusters] = useState<ExtremeCluster[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    get<ExtremeCluster[]>("/api/weather/extreme")
+      .then(d => { setClusters(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+  return { clusters, loading };
+}
+
+export function useRegionalWeather() {
+  const [regions, setRegions] = useState<RegionalWeather[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    get<RegionalWeather[]>("/api/weather/regional")
+      .then(d => { setRegions(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+  return { regions, loading };
+}
+
+export function useNews(category: string) {
+  const [articles, setArticles] = useState<NewsArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    get<NewsArticle[]>(`/api/news/${category}`)
+      .then(d => { setArticles(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [category]);
+  return { articles, loading };
+}
+
+export function useAstronomy() {
+  const [sky, setSky] = useState<AstronomyData | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    get<AstronomyData>("/api/astronomy")
+      .then(d => { setSky(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+  return { sky, loading };
+}
+
 export async function triggerRefresh(): Promise<void> {
   await fetch("/api/refresh", { method: "POST" });
 }

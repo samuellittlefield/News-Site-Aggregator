@@ -112,6 +112,35 @@ class WikiPageView(Base):
     wiki_page = relationship("WikiPage", back_populates="pageviews")
 
 
+class NewsArticle(Base):
+    __tablename__ = "news_articles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    category = Column(String, nullable=False)
+    title = Column(String, nullable=False)
+    url = Column(String, nullable=True)
+    source = Column(String, nullable=True)
+    published_at = Column(DateTime(timezone=True), nullable=True)
+    description = Column(Text, nullable=True)
+    ai_summary = Column(Text, nullable=True)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class RegionalWeather(Base):
+    __tablename__ = "regional_weather"
+
+    id = Column(Integer, primary_key=True, index=True)
+    region = Column(String, nullable=False, unique=True)
+    city = Column(String, nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    temp_max_f = Column(Float, nullable=True)
+    temp_min_f = Column(Float, nullable=True)
+    precipitation_mm = Column(Float, nullable=True)
+    condition = Column(String, nullable=True)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class ClimateEvent(Base):
     __tablename__ = "climate_events"
 

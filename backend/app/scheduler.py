@@ -13,6 +13,8 @@ from app.services.velocity import compute_velocity
 from app.services import pytrends_service
 from app.services import clustering as clustering_service
 from app.services import climate as climate_service
+from app.services import regional_weather as regional_weather_service
+from app.services import news_categories as news_categories_service
 
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
@@ -58,6 +60,29 @@ async def refresh_climate():
         db.close()
 
 
+async def refresh_news():
+    logger.info("Refreshing news categories...")
+    db = SessionLocal()
+    try:
+        for cat in ["politics", "transportation"]:
+            await news_categories_service.fetch_news_category(cat, db)
+    except Exception as e:
+        logger.exception("News refresh failed: %s", e)
+    finally:
+        db.close()
+
+
+async def refresh_weather():
+    logger.info("Refreshing regional weather...")
+    db = SessionLocal()
+    try:
+        await regional_weather_service.fetch_regional_weather(db)
+    except Exception as e:
+        logger.exception("Weather refresh failed: %s", e)
+    finally:
+        db.close()
+
+
 async def refresh_breakout():
     logger.info("Starting pytrends breakout refresh...")
     db = SessionLocal()
@@ -81,6 +106,18 @@ def start_scheduler(interval_hours: int = 3):
         refresh_climate,
         IntervalTrigger(hours=6),
         id="climate_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_news,
+        IntervalTrigger(hours=1),
+        id="news_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_weather,
+        IntervalTrigger(hours=3),
+        id="weather_job",
         replace_existing=True,
     )
     # Breakout job uses pytrends — enable when a reliable data source is wired in

@@ -8,3 +8,5 @@ apscheduler==3.10.4
 python-dotenv==1.0.1
 pydantic==2.9.2
 pytrends==4.9.2
+ephem==4.1.6
+feedparser==6.0.11
