@@ -78,18 +78,17 @@ async def fetch_reddit_trending(db: Session) -> list:
         # Check against existing active trends
         title_lower = title.lower()
         title_words = set(title_lower.split())
-        skip = False
-        for existing_title in active_titles:
-            overlap = len(title_words & set(existing_title.split()))
-            if overlap / max(len(title_words), 1) >= 0.5:
-                # Boost existing signal
-                active_titles[existing_title].signal_score = max(
-                    active_titles[existing_title].signal_score,
-                    _reddit_signal(score, comments)
-                )
-                skip = True
+        reddit_sig = _reddit_signal(score, comments)
+        matched_existing = None
+        for existing_title, existing_trend in active_titles.items():
+            overlap = len(title_words & set(existing_title.split())) / max(len(title_words), 1)
+            if overlap >= 0.5:
+                matched_existing = existing_trend
                 break
-        if skip:
+
+        if matched_existing:
+            # Absorb Reddit signal into the existing entry rather than creating a duplicate
+            matched_existing.signal_score = matched_existing.signal_score + reddit_sig * 0.5
             continue
 
         signal = _reddit_signal(score, comments)

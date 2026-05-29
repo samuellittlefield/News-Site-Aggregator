@@ -1,9 +1,9 @@
 import { Trend } from "../api/client";
 
-const SOURCE_BADGES: Record<string, { label: string; cls: string }> = {
-  rss:       { label: "G",  cls: "bg-blue-950 text-blue-400 border-blue-800" },
-  wikipedia: { label: "W",  cls: "bg-gray-800 text-gray-300 border-gray-600" },
-  reddit:    { label: "R",  cls: "bg-orange-950 text-orange-400 border-orange-800" },
+const SOURCE_BADGES: Record<string, { label: string; cls: string; title: string }> = {
+  rss:       { label: "G",  cls: "bg-blue-950 text-blue-400 border-blue-800",     title: "Google Trends" },
+  wikipedia: { label: "W",  cls: "bg-gray-800 text-gray-300 border-gray-600",     title: "Wikipedia Trending" },
+  reddit:    { label: "R",  cls: "bg-orange-950 text-orange-400 border-orange-800", title: "Reddit" },
 };
 
 const CATEGORY_STYLES: Record<string, string> = {
@@ -119,10 +119,13 @@ export function TrendCard({ trend, onClick }: Props) {
         )}
 
         <div className="flex items-center gap-1.5 ml-auto">
-          {/* Source badge */}
-          {trend.source && trend.source !== "rss" && SOURCE_BADGES[trend.source] && (
-            <span className={`text-[10px] font-bold border rounded px-1 py-0.5 ${SOURCE_BADGES[trend.source].cls}`}>
-              {SOURCE_BADGES[trend.source].label}
+          {/* Source badge — shown for all sources */}
+          {SOURCE_BADGES[trend.source ?? "rss"] && (
+            <span
+              title={SOURCE_BADGES[trend.source ?? "rss"].title}
+              className={`text-[10px] font-bold border rounded px-1 py-0.5 ${SOURCE_BADGES[trend.source ?? "rss"].cls}`}
+            >
+              {SOURCE_BADGES[trend.source ?? "rss"].label}
             </span>
           )}
           <span className="text-xs text-gray-600">

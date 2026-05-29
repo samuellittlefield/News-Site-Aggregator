@@ -98,22 +98,24 @@ async def fetch_wikipedia_trending(db: Session) -> list:
             continue
 
         title_clean = article_title.replace("_", " ")
-        if title_clean.lower() in active_titles:
-            # Already in the feed — boost its signal score
-            existing = active_titles[title_clean.lower()]
-            ydata = articles_yesterday.get(article_title)
-            boost = _wiki_signal(today_data["rank"], ydata["rank"] if ydata else None, today_data["views"])
-            existing.signal_score = max(existing.signal_score, boost)
-            continue
+        ydata = articles_yesterday.get(article_title)
+        wiki_sig = _wiki_signal(today_data["rank"], ydata["rank"] if ydata else None, today_data["views"])
 
-        # Check if any existing active trend title overlaps significantly
+        # Check for exact or near-match with existing active trends — boost rather than duplicate
         title_words = set(title_clean.lower().split())
-        skip = False
-        for active_title in active_titles:
-            if len(title_words & set(active_title.split())) / max(len(title_words), 1) >= 0.6:
-                skip = True
-                break
-        if skip:
+        matched_existing = None
+        if title_clean.lower() in active_titles:
+            matched_existing = active_titles[title_clean.lower()]
+        else:
+            for active_title, active_trend in active_titles.items():
+                overlap = len(title_words & set(active_title.split())) / max(len(title_words), 1)
+                if overlap >= 0.6:
+                    matched_existing = active_trend
+                    break
+
+        if matched_existing:
+            # Absorb Wikipedia signal into the existing entry (RSS or other source)
+            matched_existing.signal_score = matched_existing.signal_score + wiki_sig * 0.5
             continue
 
         ydata = articles_yesterday.get(article_title)

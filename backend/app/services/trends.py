@@ -12,18 +12,20 @@ logger = logging.getLogger(__name__)
 TRENDS_RSS_URL = "https://trends.google.com/trending/rss?geo=US"
 HT_NS = "https://trends.google.com/trending/rss"
 
-# Traffic string → signal score (normalised so RSS and other sources are comparable)
+# Traffic string → signal score.
+# RSS entries represent *confirmed* high-volume searches so they score
+# competitively alongside Wikipedia/Reddit spike signals.
 TRAFFIC_SIGNAL: dict = {
-    "200": 15, "500": 30, "1000": 55, "2000": 100, "5000": 175,
-    "10K": 300, "50K": 600, "100K": 900, "500K": 1500, "1M": 2000,
+    "200": 60, "500": 100, "1000": 160, "2000": 230, "5000": 320,
+    "10K": 450, "50K": 700, "100K": 950, "500K": 1500, "1M": 2000,
 }
 
 def _traffic_to_signal(traffic: str) -> float:
     """Convert a traffic string like '2000+' or '10K+' to a signal score."""
     if not traffic:
-        return 10.0
+        return 50.0
     key = traffic.strip().rstrip("+").upper()
-    return float(TRAFFIC_SIGNAL.get(key, 10))
+    return float(TRAFFIC_SIGNAL.get(key, 50))
 
 
 def _ht(tag: str) -> str:
