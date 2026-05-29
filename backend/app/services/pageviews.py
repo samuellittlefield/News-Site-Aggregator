@@ -35,6 +35,9 @@ async def fetch_pageviews(wiki_page: WikiPage, db: Session) -> List[WikiPageView
         if resp.status_code == 404:
             logger.info("No pageview data for '%s' (404)", wiki_page.title)
             return []
+        if resp.status_code == 429:
+            logger.warning("Wikimedia rate-limited for '%s' — skipping pageviews", wiki_page.title)
+            return []
         resp.raise_for_status()
     except httpx.RequestError as e:
         logger.warning("Pageviews request failed for '%s': %s", wiki_page.title, e)

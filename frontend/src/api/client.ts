@@ -44,6 +44,25 @@ export interface Trend {
   geo: string;
   summary: Summary | null;
   wiki_pages: WikiPage[];
+  cluster_id: number | null;
+  cluster_name: string | null;
+}
+
+export interface ClimateEvent {
+  id: number;
+  eonet_id: string;
+  title: string;
+  category: string;
+  category_label: string;
+  category_icon: string;
+  status: string;
+  coordinates: { lat: number; lon: number } | null;
+  start_date: string | null;
+  magnitude: number | null;
+  magnitude_unit: string | null;
+  source_url: string | null;
+  ai_summary: string | null;
+  fetched_at: string;
 }
 
 export interface TrendDetail extends Trend {
@@ -171,6 +190,25 @@ export function useRisingTrends() {
   }, []);
 
   return { rising, loading, refresh: load };
+}
+
+export function useClimateEvents() {
+  const [events, setEvents] = useState<ClimateEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    get<ClimateEvent[]>("/api/climate")
+      .then((data) => { setEvents(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+    const id = setInterval(load, 10 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return { events, loading, refresh: load };
 }
 
 export async function triggerRefresh(): Promise<void> {

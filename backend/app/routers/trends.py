@@ -63,6 +63,8 @@ class TrendOut(BaseModel):
     geo: str
     summary: Optional[SummaryOut]
     wiki_pages: List[WikiPageOut]
+    cluster_id: Optional[int]
+    cluster_name: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -80,12 +82,15 @@ class TrendDetailOut(TrendOut):
 
 @router.get("", response_model=List[TrendOut])
 def list_trends(db: Session = Depends(get_db)):
-    return (
+    trends = (
         db.query(Trend)
         .filter(Trend.is_active == True)  # noqa: E712
         .order_by(Trend.fetched_at.desc())
         .all()
     )
+    for t in trends:
+        t.cluster_name = t.cluster.name if t.cluster else None
+    return trends
 
 
 @router.get("/rising", response_model=List[TrendOut])

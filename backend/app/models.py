@@ -1,8 +1,21 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text, Date
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text, Date, Float
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
+
+
+class TrendCluster(Base):
+    __tablename__ = "trend_clusters"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(String, nullable=True)
+    generated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    trends = relationship("Trend", back_populates="cluster")
 
 
 class Trend(Base):
@@ -19,9 +32,11 @@ class Trend(Base):
     velocity_pct = Column(Integer, default=0, nullable=False)
     rank_velocity = Column(Integer, default=0, nullable=False)
     source = Column(String, default="rss", nullable=False)
+    cluster_id = Column(Integer, ForeignKey("trend_clusters.id", ondelete="SET NULL"), nullable=True)
     geo = Column(String, default="US")
     is_active = Column(Boolean, default=True)
 
+    cluster = relationship("TrendCluster", back_populates="trends")
     articles = relationship("Article", back_populates="trend", cascade="all, delete-orphan")
     summary = relationship("Summary", back_populates="trend", uselist=False, cascade="all, delete-orphan")
     wiki_pages = relationship(
@@ -95,3 +110,20 @@ class WikiPageView(Base):
     views = Column(Integer, nullable=False)
 
     wiki_page = relationship("WikiPage", back_populates="pageviews")
+
+
+class ClimateEvent(Base):
+    __tablename__ = "climate_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    eonet_id = Column(String, nullable=False, unique=True)
+    title = Column(String, nullable=False)
+    category = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="open")
+    coordinates = Column(JSONB, nullable=True)
+    start_date = Column(DateTime(timezone=True), nullable=True)
+    magnitude = Column(Float, nullable=True)
+    magnitude_unit = Column(String, nullable=True)
+    source_url = Column(String, nullable=True)
+    ai_summary = Column(Text, nullable=True)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

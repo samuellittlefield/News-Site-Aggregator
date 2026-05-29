@@ -1,9 +1,38 @@
 import { useState } from "react";
-import { triggerRefresh, useTrends } from "./api/client";
+import { triggerRefresh, useTrends, Trend } from "./api/client";
 import { BreakoutSection } from "./components/BreakoutSection";
+import { ClimateSection } from "./components/ClimateSection";
+import { ClusterGroup } from "./components/ClusterGroup";
 import { RisingStrip } from "./components/RisingStrip";
 import { TrendCard } from "./components/TrendCard";
 import { TrendDetail } from "./components/TrendDetail";
+
+/** Group trends by cluster, preserving the original sort order. */
+function groupTrends(trends: Trend[]): {
+  clusters: { id: number; name: string; category: string | null; trends: Trend[] }[];
+  ungrouped: Trend[];
+} {
+  const clusterMap = new Map<number, { id: number; name: string; category: string | null; trends: Trend[] }>();
+  const ungrouped: Trend[] = [];
+
+  for (const trend of trends) {
+    if (trend.cluster_id && trend.cluster_name) {
+      if (!clusterMap.has(trend.cluster_id)) {
+        clusterMap.set(trend.cluster_id, {
+          id: trend.cluster_id,
+          name: trend.cluster_name,
+          category: trend.category,
+          trends: [],
+        });
+      }
+      clusterMap.get(trend.cluster_id)!.trends.push(trend);
+    } else {
+      ungrouped.push(trend);
+    }
+  }
+
+  return { clusters: Array.from(clusterMap.values()), ungrouped };
+}
 
 export default function App() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -20,6 +49,8 @@ export default function App() {
   if (selectedId !== null) {
     return <TrendDetail id={selectedId} onBack={() => setSelectedId(null)} />;
   }
+
+  const { clusters, ungrouped } = groupTrends(trends);
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -54,14 +85,16 @@ export default function App() {
 
       <main className="max-w-5xl mx-auto px-4 py-8">
         {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="bg-gray-900 rounded-xl p-5 space-y-3 animate-pulse">
-                <div className="h-5 bg-gray-800 rounded w-3/4" />
-                <div className="h-3 bg-gray-800 rounded w-full" />
-                <div className="h-3 bg-gray-800 rounded w-2/3" />
-              </div>
-            ))}
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} className="bg-gray-900 rounded-xl p-5 space-y-3 animate-pulse">
+                  <div className="h-5 bg-gray-800 rounded w-3/4" />
+                  <div className="h-3 bg-gray-800 rounded w-full" />
+                  <div className="h-3 bg-gray-800 rounded w-2/3" />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -89,13 +122,37 @@ export default function App() {
 
         {!loading && trends.length > 0 && (
           <>
+            {/* ── Trending segment ── */}
             <RisingStrip onSelect={setSelectedId} />
             <BreakoutSection onSelect={setSelectedId} />
+
             <p className="text-xs text-gray-600 mb-5">{trends.length} trending topics</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {trends.map((trend) => (
-                <TrendCard key={trend.id} trend={trend} onClick={() => setSelectedId(trend.id)} />
+
+            <div className="space-y-6">
+              {/* Clustered groups */}
+              {clusters.map((cluster) => (
+                <ClusterGroup
+                  key={cluster.id}
+                  name={cluster.name}
+                  category={cluster.category}
+                  trends={cluster.trends}
+                  onSelect={setSelectedId}
+                />
               ))}
+
+              {/* Ungrouped topics */}
+              {ungrouped.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {ungrouped.map((trend) => (
+                    <TrendCard key={trend.id} trend={trend} onClick={() => setSelectedId(trend.id)} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Climate segment ── */}
+            <div className="mt-10 border-t border-gray-800 pt-10">
+              <ClimateSection />
             </div>
           </>
         )}
