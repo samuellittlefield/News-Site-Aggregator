@@ -51,6 +51,7 @@ export interface Trend {
   source: string;
   sources_list: string[];
   trend_window: string | null;
+  validated_by: number;
 }
 
 export interface ClimateEvent {

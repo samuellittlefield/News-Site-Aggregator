@@ -19,6 +19,7 @@ from app.services import wikipedia_trending as wikipedia_trending_service
 from app.services import reddit_trending as reddit_trending_service
 from app.services import google_trends_multi as google_trends_multi_service
 from app.services import nyt as nyt_service
+from app.services import situation_builder as situation_builder_service
 from app.services import service_status as service_status_service
 
 logger = logging.getLogger(__name__)
@@ -66,14 +67,20 @@ async def refresh_climate():
 
 
 async def refresh_extended_sources():
-    """Fetch Wikipedia trending, NYT, and Reddit to expand the trend pool."""
-    logger.info("Refreshing extended sources (Wikipedia + NYT + Reddit)...")
+    """Enrich active Google Trends with Wikipedia + NYT signals (boost only)."""
+    logger.info("Refreshing enrichment sources (Wikipedia + NYT)...")
     db = SessionLocal()
     try:
-        wiki   = await wikipedia_trending_service.fetch_wikipedia_trending(db)
-        nyt    = await nyt_service.fetch_nyt_trending(db)
-        reddit = await reddit_trending_service.fetch_reddit_trending(db)
-        logger.info("Extended sources: +%d Wikipedia, +%d NYT, +%d Reddit", len(wiki), len(nyt), len(reddit))
+        wiki_boosted = await wikipedia_trending_service.fetch_wikipedia_trending(db)
+        nyt_boosted  = await nyt_service.fetch_nyt_trending(db)
+        reddit_count = await reddit_trending_service.fetch_reddit_trending(db)
+        logger.info(
+            "Enrichment: Wikipedia boosted %d, NYT boosted %d, Reddit %d",
+            wiki_boosted, nyt_boosted, reddit_count,
+        )
+        # Build cross-source situation summaries
+        synthesized = await situation_builder_service.build_situation_summaries(db)
+        logger.info("Situation synthesis: updated %d summaries", synthesized)
     except Exception as e:
         logger.exception("Extended sources refresh failed: %s", e)
     finally:
@@ -126,7 +133,7 @@ async def refresh_breakout():
         db.close()
 
 
-def start_scheduler(interval_hours: int = 3):
+def start_scheduler(interval_hours: int = 1):
     scheduler.add_job(
         refresh_all,
         IntervalTrigger(hours=interval_hours),
@@ -134,15 +141,15 @@ def start_scheduler(interval_hours: int = 3):
         replace_existing=True,
     )
     scheduler.add_job(
-        refresh_climate,
-        IntervalTrigger(hours=6),
-        id="climate_job",
+        refresh_extended_sources,
+        IntervalTrigger(hours=1),
+        id="extended_job",
         replace_existing=True,
     )
     scheduler.add_job(
-        refresh_extended_sources,
-        IntervalTrigger(hours=2),
-        id="extended_job",
+        refresh_climate,
+        IntervalTrigger(hours=6),
+        id="climate_job",
         replace_existing=True,
     )
     scheduler.add_job(
@@ -163,7 +170,5 @@ def start_scheduler(interval_hours: int = 3):
         id="status_job",
         replace_existing=True,
     )
-    # Breakout job uses pytrends — enable when a reliable data source is wired in
-    # scheduler.add_job(refresh_breakout, IntervalTrigger(hours=1), id="breakout_job")
     scheduler.start()
-    logger.info("Scheduler started — RSS every %dh, pytrends every 1h", interval_hours)
+    logger.info("Scheduler started — Google Trends every %dh, enrichment every 1h", interval_hours)

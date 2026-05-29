@@ -70,6 +70,7 @@ class TrendOut(BaseModel):
     source: str
     sources_list: List[str] = []
     trend_window: Optional[str] = None
+    validated_by: int = 0  # count of distinct source types validating this situation
 
     model_config = {"from_attributes": True}
 
@@ -90,13 +91,25 @@ def list_trends(limit: int = 50, db: Session = Depends(get_db)):
     """All active trends sorted by signal score — multi-source aggregation."""
     trends = (
         db.query(Trend)
-        .filter(Trend.is_active == True)  # noqa: E712
+        .filter(Trend.is_active == True, Trend.source == "rss")  # noqa: E712
         .order_by(Trend.signal_score.desc(), Trend.fetched_at.desc())
         .limit(limit)
         .all()
     )
     for t in trends:
         t.cluster_name = t.cluster.name if t.cluster else None
+        # Count distinct source families (google, nyt, wikipedia, reddit)
+        src_families = set()
+        for s in (t.sources_list or []):
+            if s.startswith("google"):
+                src_families.add("google")
+            elif s.startswith("nyt"):
+                src_families.add("nyt")
+            elif s == "wikipedia":
+                src_families.add("wikipedia")
+            elif s == "reddit":
+                src_families.add("reddit")
+        t.validated_by = len(src_families)
     return trends
 
 

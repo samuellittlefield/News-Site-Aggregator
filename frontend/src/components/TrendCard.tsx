@@ -20,6 +20,26 @@ function dedupeSources(sources: string[]): string[] {
   return hasNyt ? [...nonNyt, "nyt_home"] : nonNyt;
 }
 
+/** Confidence bars: 1 source = 1 dim bar, 3 sources = 3 bright bars */
+function ConfidenceBars({ count }: { count: number }) {
+  return (
+    <div className="flex items-center gap-0.5" title={`Validated by ${count} source type${count !== 1 ? "s" : ""}`}>
+      {[1, 2, 3].map(i => (
+        <span
+          key={i}
+          className={`inline-block w-1 rounded-sm transition-colors ${
+            i <= count
+              ? count >= 3 ? "bg-green-400 h-3"
+                : count === 2 ? "bg-amber-400 h-2.5"
+                : "bg-blue-400 h-2"
+              : "bg-gray-700 h-2"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
 const CATEGORY_STYLES: Record<string, string> = {
   Sports:        "bg-green-950 text-green-400 border-green-800",
   Politics:      "bg-red-950 text-red-400 border-red-800",
@@ -132,8 +152,10 @@ export function TrendCard({ trend, onClick }: Props) {
           </span>
         )}
 
-        <div className="flex items-center gap-1 ml-auto flex-wrap justify-end">
-          {/* Multi-source attribution tags */}
+        <div className="flex items-center gap-1.5 ml-auto flex-wrap justify-end">
+          {/* Confidence bars */}
+          <ConfidenceBars count={trend.validated_by ?? 0} />
+          {/* Source attribution tags */}
           {dedupeSources(trend.sources_list ?? []).slice(0, 3).map(src => {
             const tag = SOURCE_TAG_STYLES[src];
             return tag ? (

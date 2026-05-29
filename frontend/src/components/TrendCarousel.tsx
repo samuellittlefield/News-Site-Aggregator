@@ -84,7 +84,7 @@ export function TrendCarousel({ trends, onSelect, count }: Props) {
     <section>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <p className="text-xs text-gray-600">{count} topics · sorted by signal</p>
+          <p className="text-xs text-gray-600">{count} situations · signal strength ▪▪▪</p>
           <div className="flex items-center gap-1.5 text-[10px] text-gray-600">
             <span className="border border-amber-800 text-amber-400 rounded px-1 font-bold">⚡4h</span>
             <span className="border border-blue-800 text-blue-400 rounded px-1 font-bold">G24h</span>

@@ -100,10 +100,9 @@ async def fetch_google_trends_multi(db: Session) -> list:
 
     all_titles = set(feed_24h.keys()) | set(feed_4h.keys())
 
-    # Deactivate all current RSS trends
+    # Deactivate all current active trends — Google is the only source of situations
     db.query(Trend).filter(
         Trend.is_active == True,  # noqa: E712
-        Trend.source.in_(["rss", "rss_4h", "rss_24h"]),
     ).update({"is_active": False})
 
     trends = []
