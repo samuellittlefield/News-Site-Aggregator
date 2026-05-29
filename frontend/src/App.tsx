@@ -2,6 +2,7 @@ import { useState } from "react";
 import { triggerRefresh, useTrends } from "./api/client";
 import { AstronomySection } from "./components/AstronomySection";
 import { NewsSegment } from "./components/NewsSegment";
+import { PoliticsSection } from "./components/PoliticsSection";
 import { TrendCarousel } from "./components/TrendCarousel";
 import { TrendDetail } from "./components/TrendDetail";
 import { WeatherSection } from "./components/WeatherSection";
@@ -24,8 +25,7 @@ export default function App() {
     return <TrendDetail id={selectedId} onBack={() => setSelectedId(null)} />;
   }
 
-  // Cross-reference trends by category for Politics and Transportation
-  const politicsTrends = trends.filter(t => t.category === "Politics");
+  // Cross-reference trends for Transportation
   const transportTrends = trends.filter(t =>
     t.category === "Technology" || t.title.toLowerCase().match(/\b(ev|tesla|transit|train|airline|aviation|amtrak|uber|lyft|autonomous)\b/)
   );
@@ -81,13 +81,7 @@ export default function App() {
         {SECTION_DIVIDER}
 
         {/* 3 ── Politics ──────────────────────────────────────────────── */}
-        <NewsSegment
-          category="politics"
-          label="Politics"
-          icon="🏛"
-          trends={politicsTrends}
-          onSelect={setSelectedId}
-        />
+        <PoliticsSection onSelect={setSelectedId} />
 
         {SECTION_DIVIDER}
 

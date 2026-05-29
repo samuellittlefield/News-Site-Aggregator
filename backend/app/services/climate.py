@@ -18,10 +18,11 @@ HEADERS = {"User-Agent": "TrendingNewsSite/1.0"}
 
 CATEGORIES = {
     "wildfires": "Wildfires",
-    "severeStorms": "Severe Storms",
-    "floods": "Floods",
+    "severeStorms": "Hurricanes & Storms",
+    "floods": "Floods & Heavy Rain",
     "tempExtremes": "Extreme Heat",
     "drought": "Drought",
+    "landslides": "Landslides & Mudslides",
 }
 
 def _extract_location(title: str) -> Optional[str]:
@@ -40,10 +41,11 @@ def _extract_location(title: str) -> Optional[str]:
 
 CATEGORY_ICONS = {
     "wildfires": "🔥",
-    "severeStorms": "⛈",
+    "severeStorms": "🌀",
     "floods": "🌊",
     "tempExtremes": "🌡",
     "drought": "☀️",
+    "landslides": "⛰️",
 }
 
 

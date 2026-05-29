@@ -262,6 +262,48 @@ export interface AstronomyData {
   location: string;
 }
 
+export interface DayForecast {
+  date: string;
+  day_name: string;
+  temp_max_f: number | null;
+  temp_min_f: number | null;
+  precipitation_mm: number | null;
+  wind_mph: number | null;
+  condition: string | null;
+}
+
+export interface RegionalForecast {
+  region: string;
+  city: string;
+  days: DayForecast[];
+}
+
+export function useRegionalForecast(region: string | null) {
+  const [forecast, setForecast] = useState<RegionalForecast | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!region) { setForecast(null); return; }
+    setLoading(true);
+    get<RegionalForecast>(`/api/weather/forecast/${encodeURIComponent(region)}`)
+      .then(d => { setForecast(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [region]);
+
+  return { forecast, loading };
+}
+
+export function usePoliticalTrends() {
+  const [trends, setTrends] = useState<Trend[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    get<Trend[]>("/api/trends/political")
+      .then(d => { setTrends(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+  return { trends, loading };
+}
+
 export function useExtremeWeather() {
   const [clusters, setClusters] = useState<ExtremeCluster[]>([]);
   const [loading, setLoading] = useState(true);

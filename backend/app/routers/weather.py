@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+import httpx
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -83,3 +84,80 @@ class RegionalWeatherOut(BaseModel):
 @router.get("/regional", response_model=List[RegionalWeatherOut])
 def regional_weather(db: Session = Depends(get_db)):
     return db.query(RegionalWeather).order_by(RegionalWeather.region).all()
+
+
+# ── 3-day forecast (fetched on demand) ────────────────────────────────────────
+
+WMO_CONDITIONS = {
+    0: "Clear", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+    45: "Fog", 51: "Light drizzle", 53: "Drizzle", 55: "Heavy drizzle",
+    61: "Light rain", 63: "Rain", 65: "Heavy rain",
+    71: "Light snow", 73: "Snow", 75: "Heavy snow",
+    80: "Showers", 81: "Showers", 82: "Heavy showers",
+    95: "Thunderstorm", 96: "Thunderstorm", 99: "Severe thunderstorm",
+}
+
+DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+class DayForecast(BaseModel):
+    date: str
+    day_name: str
+    temp_max_f: Optional[float]
+    temp_min_f: Optional[float]
+    precipitation_mm: Optional[float]
+    wind_mph: Optional[float]
+    condition: Optional[str]
+
+
+class RegionalForecastOut(BaseModel):
+    region: str
+    city: str
+    days: List[DayForecast]
+
+
+def _c_to_f(c: Optional[float]) -> Optional[float]:
+    return round(c * 9 / 5 + 32, 1) if c is not None else None
+
+
+@router.get("/forecast/{region}", response_model=RegionalForecastOut)
+async def get_forecast(region: str, db: Session = Depends(get_db)):
+    rw = db.query(RegionalWeather).filter(RegionalWeather.region == region).first()
+    if not rw:
+        raise HTTPException(status_code=404, detail="Region not found")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                "https://api.open-meteo.com/v1/forecast",
+                params={
+                    "latitude": rw.latitude,
+                    "longitude": rw.longitude,
+                    "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,windspeed_10m_max",
+                    "temperature_unit": "celsius",
+                    "windspeed_unit": "mph",
+                    "timezone": "auto",
+                    "forecast_days": 3,
+                },
+            )
+        resp.raise_for_status()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    daily = resp.json().get("daily", {})
+    dates = daily.get("time", [])
+    days = []
+    for i, date_str in enumerate(dates[:3]):
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
+        wmo = (daily.get("weathercode") or [])[i] if i < len(daily.get("weathercode") or []) else None
+        days.append(DayForecast(
+            date=date_str,
+            day_name=DAY_NAMES[dt.weekday()],
+            temp_max_f=_c_to_f((daily.get("temperature_2m_max") or [])[i] if i < len(daily.get("temperature_2m_max") or []) else None),
+            temp_min_f=_c_to_f((daily.get("temperature_2m_min") or [])[i] if i < len(daily.get("temperature_2m_min") or []) else None),
+            precipitation_mm=(daily.get("precipitation_sum") or [])[i] if i < len(daily.get("precipitation_sum") or []) else None,
+            wind_mph=(daily.get("windspeed_10m_max") or [])[i] if i < len(daily.get("windspeed_10m_max") or []) else None,
+            condition=WMO_CONDITIONS.get(wmo) if wmo is not None else None,
+        ))
+
+    return RegionalForecastOut(region=rw.region, city=rw.city, days=days)

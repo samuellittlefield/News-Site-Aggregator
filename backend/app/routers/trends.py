@@ -117,6 +117,24 @@ def rising_trends(limit: int = 5, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/political", response_model=List[TrendOut])
+def political_trends(db: Session = Depends(get_db)):
+    """Active political trending topics sorted by velocity — highest activity first."""
+    trends = (
+        db.query(Trend)
+        .filter(Trend.is_active == True, Trend.category == "Politics")  # noqa: E712
+        .order_by(
+            Trend.rank_velocity.desc(),
+            Trend.velocity_abs.desc(),
+            Trend.appearance_count.asc(),  # breaking (count=1) sorts high
+        )
+        .all()
+    )
+    for t in trends:
+        t.cluster_name = t.cluster.name if t.cluster else None
+    return trends
+
+
 @router.get("/breakout", response_model=List[TrendOut])
 def breakout_trends(limit: int = 8, db: Session = Depends(get_db)):
     """Topics surfaced by pytrends that aren't in the Google Trends RSS top feed."""

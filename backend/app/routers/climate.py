@@ -12,18 +12,20 @@ router = APIRouter(prefix="/api/climate", tags=["climate"])
 
 CATEGORY_LABELS = {
     "wildfires": "Wildfires",
-    "severeStorms": "Severe Storms",
-    "floods": "Floods",
+    "severeStorms": "Hurricanes & Storms",
+    "floods": "Floods & Heavy Rain",
     "tempExtremes": "Extreme Heat",
     "drought": "Drought",
+    "landslides": "Landslides & Mudslides",
 }
 
 CATEGORY_ICONS = {
     "wildfires": "🔥",
-    "severeStorms": "⛈",
+    "severeStorms": "🌀",
     "floods": "🌊",
     "tempExtremes": "🌡",
     "drought": "☀️",
+    "landslides": "⛰️",
 }
 
 
