@@ -46,13 +46,16 @@ async def cluster_trends(db: Session) -> list:
     prompt = (
         "You are grouping trending Google search topics into related news events.\n\n"
         "Topics:\n" + "\n".join(topic_lines) + "\n\n"
-        "Identify groups of 2 or more topics that are clearly about the same event or story. "
-        "Only cluster topics with strong thematic overlap. When in doubt, leave topics ungrouped.\n\n"
+        "RULES — read carefully:\n"
+        "1. Only cluster topics about the SAME SPECIFIC EVENT or breaking story (e.g. the same game, trial, election, disaster).\n"
+        "2. Do NOT cluster topics just because they share a sport, industry, or broad category.\n"
+        "3. Each cluster must have 2-4 topics maximum. Never put 5+ topics in one cluster.\n"
+        "4. When in doubt, leave topics ungrouped. Ungrouped is better than wrong.\n\n"
         "Return a JSON object with a 'clusters' array. Each cluster has:\n"
-        '- "name": short event name (e.g. "French Open 2026")\n'
-        '- "description": one sentence explaining the connection\n'
+        '- "name": short specific event name (e.g. "NBA Finals Game 4")\n'
+        '- "description": one sentence explaining the specific connection\n'
         '- "category": the dominant category (Sports, Politics, etc.)\n'
-        '- "topics": list of exact topic titles from the input\n\n'
+        '- "topics": list of 2-4 exact topic titles from the input\n\n'
         "Return only the JSON, no other text."
     )
 
@@ -99,6 +102,10 @@ async def cluster_trends(db: Session) -> list:
         matched = [title_map[topic.lower()] for topic in topics if topic.lower() in title_map]
         if len(matched) < 2:
             continue
+        # Hard cap: never let one cluster swallow more than 4 topics
+        if len(matched) > 4:
+            logger.info("Cluster '%s' capped from %d → 4 topics", c.get("name"), len(matched))
+            matched = matched[:4]
 
         cluster = TrendCluster(
             name=c.get("name", "Related Topics"),
