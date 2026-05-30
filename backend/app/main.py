@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -18,11 +19,27 @@ from fastapi import BackgroundTasks
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
 
+logger = logging.getLogger(__name__)
+
+
+async def _startup_refresh():
+    """Run an initial full refresh shortly after startup so summaries are populated immediately."""
+    await asyncio.sleep(5)  # brief pause to let DB connections settle
+    logger.info("Running startup refresh...")
+    await refresh_all()
+    await refresh_extended_sources()
+    await refresh_news()
+    await refresh_status()
+    await refresh_weather()
+    logger.info("Startup refresh complete")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
-    start_scheduler(interval_hours=3)
+    start_scheduler(interval_hours=1)
+    # Fire a full refresh immediately so the feed is fresh on every deploy
+    asyncio.create_task(_startup_refresh())
     yield
 
 
