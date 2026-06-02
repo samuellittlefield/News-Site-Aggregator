@@ -19,6 +19,7 @@ interface RainViewerData {
 
 export function WeatherMap() {
   const [radarPath, setRadarPath] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     fetch("https://api.rainviewer.com/public/weather-maps.json")
@@ -26,14 +27,17 @@ export function WeatherMap() {
       .then((data: RainViewerData) => {
         const frames = data?.radar?.past ?? [];
         if (frames.length > 0) {
-          setRadarPath(frames[frames.length - 1].path);
+          const latest = frames[frames.length - 1];
+          setRadarPath(latest.path);
+          setUpdatedAt(new Date(latest.time * 1000));
         }
       })
       .catch(() => {});
   }, []);
 
   return (
-    <div className="relative w-full rounded-xl overflow-hidden border border-gray-800" style={{ aspectRatio: "8/5" }}>
+    <div className="space-y-1.5">
+    <div className="relative w-full rounded-xl overflow-hidden border border-gray-800" style={{ aspectRatio: "16/5" }}>
       <MapContainer
         center={US_CENTER}
         zoom={4}
@@ -75,8 +79,25 @@ export function WeatherMap() {
 
       {/* Attribution */}
       <div className="absolute bottom-2 right-2 z-[1000] text-[9px] text-gray-600 pointer-events-none">
-        RainViewer · © CartoDB
+        © CartoDB
       </div>
+    </div>
+
+    {/* Timestamp + source link below the map */}
+    <div className="flex items-center gap-1.5 text-[10px] text-gray-600">
+      {updatedAt && (
+        <span>Radar updated {updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+      )}
+      <span>·</span>
+      <a
+        href="https://www.rainviewer.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="hover:text-gray-400 transition-colors"
+      >
+        RainViewer ↗
+      </a>
+    </div>
     </div>
   );
 }

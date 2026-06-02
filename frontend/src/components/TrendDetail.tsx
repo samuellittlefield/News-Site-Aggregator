@@ -158,6 +158,32 @@ export function TrendDetail({ id, onBack }: Props) {
                 Related Articles
               </h2>
               <ArticleList articles={trend.articles} />
+              {trend.articles.length === 0 && trend.wiki_pages.length === 0 && (
+                <div className="flex flex-col gap-2 pt-2">
+                  <a
+                    href={`https://news.google.com/search?q=${encodeURIComponent(trend.title)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    Search Google News for "{trend.title}" ↗
+                  </a>
+                  <a
+                    href={`https://www.google.com/search?q=${encodeURIComponent(trend.title)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Google Search ↗
+                  </a>
+                </div>
+              )}
             </section>
           </article>
         )}

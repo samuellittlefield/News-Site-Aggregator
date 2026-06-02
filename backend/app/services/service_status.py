@@ -26,6 +26,7 @@ SERVICES = [
     {"name": "Discord",      "url": "https://discordstatus.com/api/v2/status.json",           "icon": "💬", "page": "https://discordstatus.com"},
     {"name": "Notion",       "url": "https://status.notion.so/api/v2/status.json",            "icon": "📝", "page": "https://status.notion.so"},
     {"name": "Linear",       "url": "https://linearstatus.com/api/v2/status.json",            "icon": "📐", "page": "https://linearstatus.com"},
+    {"name": "Anthropic",    "url": "https://status.claude.com/api/v2/status.json",           "icon": "🧠", "page": "https://status.claude.com"},
 ]
 
 INDICATOR_ORDER = {"critical": 0, "major": 1, "minor": 2, "none": 3}

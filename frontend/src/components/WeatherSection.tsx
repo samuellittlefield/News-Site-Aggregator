@@ -155,33 +155,61 @@ export function WeatherSection() {
           {/* NWS alert cards */}
           {alerts.map(alert => {
             const style = SEVERITY_STYLES[alert.severity] ?? SEVERITY_STYLES["Moderate"];
+            const isExpanded = expandedCategory === alert.nws_id;
+            const alertUrl = alert.nws_id.startsWith("http") ? alert.nws_id : `https://api.weather.gov/alerts/${alert.nws_id}`;
             return (
-              <div
-                key={alert.nws_id}
-                className={`flex-shrink-0 w-60 bg-gray-900 border ${style.border} rounded-xl p-4 space-y-2`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className={`text-xs font-bold ${eventColor(alert.event)} flex items-center gap-1.5`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${style.dot} animate-pulse`} />
-                    {alert.event}
-                  </span>
-                  <span className="text-xs text-gray-600">{alert.severity}</span>
-                </div>
-                {alert.area_desc && (
-                  <p className="text-xs text-gray-400 flex items-center gap-1">
-                    <svg className="w-2.5 h-2.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                    </svg>
-                    <span className="truncate">{alert.area_desc}</span>
-                  </p>
+              <div key={alert.nws_id} className="flex-shrink-0 w-60 space-y-0">
+                <button
+                  onClick={() => setExpandedCategory(isExpanded ? null : alert.nws_id)}
+                  className={`w-full text-left bg-gray-900 border ${isExpanded ? "border-gray-500" : style.border} hover:border-gray-500 rounded-xl p-4 space-y-2 transition-colors`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold ${eventColor(alert.event)} flex items-center gap-1.5`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${style.dot} animate-pulse`} />
+                      {alert.event}
+                    </span>
+                    <span className="text-xs text-gray-600">{alert.severity}</span>
+                  </div>
+                  {alert.area_desc && (
+                    <p className="text-xs text-gray-400 flex items-center gap-1">
+                      <svg className="w-2.5 h-2.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                      </svg>
+                      <span className="truncate">{alert.area_desc}</span>
+                    </p>
+                  )}
+                  {alert.headline && (
+                    <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{alert.headline}</p>
+                  )}
+                  <div className="flex items-center justify-between pt-1 text-xs text-gray-600">
+                    {alert.onset && <span>Since {formatDate(alert.onset)}</span>}
+                    {alert.expires && <span>Exp {formatDate(alert.expires)}</span>}
+                  </div>
+                  <p className="text-xs text-gray-600 text-right">tap to expand ›</p>
+                </button>
+
+                {isExpanded && (
+                  <div className="mt-2 p-3 bg-gray-950 border border-gray-700 rounded-xl space-y-2">
+                    {alert.urgency && (
+                      <p className="text-xs text-gray-400">
+                        <span className="text-gray-600">Urgency:</span> {alert.urgency}
+                      </p>
+                    )}
+                    {alert.expires && (
+                      <p className="text-xs text-gray-400">
+                        <span className="text-gray-600">Expires:</span> {new Date(alert.expires).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    )}
+                    <a
+                      href={alertUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-xs text-blue-400 hover:text-blue-300 transition-colors pt-1"
+                    >
+                      View full alert on weather.gov ↗
+                    </a>
+                  </div>
                 )}
-                {alert.headline && (
-                  <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{alert.headline}</p>
-                )}
-                <div className="flex items-center justify-between pt-1 text-xs text-gray-600">
-                  {alert.onset && <span>Since {formatDate(alert.onset)}</span>}
-                  {alert.expires && <span>Exp {formatDate(alert.expires)}</span>}
-                </div>
               </div>
             );
           })}
