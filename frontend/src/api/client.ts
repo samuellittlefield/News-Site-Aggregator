@@ -392,6 +392,37 @@ export function useAstronomy() {
   return { sky, loading };
 }
 
+export interface NWSAlert {
+  id: number;
+  nws_id: string;
+  event: string;
+  headline: string | null;
+  severity: string;
+  urgency: string | null;
+  area_desc: string | null;
+  onset: string | null;
+  expires: string | null;
+}
+
+export function useWeatherAlerts() {
+  const [alerts, setAlerts] = useState<NWSAlert[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    get<NWSAlert[]>("/api/weather/alerts")
+      .then(d => { setAlerts(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+    const id = setInterval(load, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return { alerts, loading };
+}
+
 export async function triggerRefresh(): Promise<void> {
   await fetch("/api/refresh", { method: "POST" });
 }

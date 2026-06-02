@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import ClimateEvent, RegionalWeather
+from app.models import ClimateEvent, NWSAlert, RegionalWeather
 from app.routers.climate import CATEGORY_ICONS, CATEGORY_LABELS
 
 router = APIRouter(prefix="/api/weather", tags=["weather"])
@@ -166,3 +166,29 @@ async def get_forecast(region: str, db: Session = Depends(get_db)):
         ))
 
     return RegionalForecastOut(region=rw.region, city=rw.city, days=days)
+
+
+# ── NWS active alerts ─────────────────────────────────────────────────────────
+
+SEVERITY_ORDER = {"Extreme": 4, "Severe": 3, "Moderate": 2, "Minor": 1, "Unknown": 0}
+
+
+class NWSAlertOut(BaseModel):
+    id: int
+    nws_id: str
+    event: str
+    headline: Optional[str]
+    severity: str
+    urgency: Optional[str]
+    area_desc: Optional[str]
+    onset: Optional[datetime]
+    expires: Optional[datetime]
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/alerts", response_model=List[NWSAlertOut])
+def get_nws_alerts(db: Session = Depends(get_db)):
+    alerts = db.query(NWSAlert).order_by(NWSAlert.onset.desc().nullslast()).limit(50).all()
+    alerts.sort(key=lambda a: SEVERITY_ORDER.get(a.severity, 0), reverse=True)
+    return alerts[:30]

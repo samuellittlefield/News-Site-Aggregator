@@ -21,6 +21,7 @@ from app.services import google_trends_multi as google_trends_multi_service
 from app.services import nyt as nyt_service
 from app.services import situation_builder as situation_builder_service
 from app.services import service_status as service_status_service
+from app.services import nws_alerts as nws_alerts_service
 
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
@@ -121,6 +122,18 @@ async def refresh_weather():
         db.close()
 
 
+async def refresh_nws_alerts():
+    logger.info("Refreshing NWS active alerts...")
+    db = SessionLocal()
+    try:
+        alerts = await nws_alerts_service.fetch_nws_alerts(db)
+        logger.info("NWS alerts refresh complete — %d alerts", len(alerts))
+    except Exception as e:
+        logger.exception("NWS alerts refresh failed: %s", e)
+    finally:
+        db.close()
+
+
 async def refresh_breakout():
     logger.info("Starting pytrends breakout refresh...")
     db = SessionLocal()
@@ -168,6 +181,12 @@ def start_scheduler(interval_hours: int = 1):
         refresh_status,
         IntervalTrigger(minutes=15),
         id="status_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_nws_alerts,
+        IntervalTrigger(minutes=15),
+        id="nws_alerts_job",
         replace_existing=True,
     )
     scheduler.start()

@@ -1,14 +1,52 @@
 import { useState } from "react";
-import { useClimateEvents, useExtremeWeather, useRegionalForecast, useRegionalWeather } from "../api/client";
+import { useClimateEvents, useExtremeWeather, useRegionalForecast, useRegionalWeather, useWeatherAlerts } from "../api/client";
+import { WeatherMap } from "./WeatherMap";
 
-const EXTREME_STYLES: Record<string, string> = {
-  wildfires:    "border-orange-800/60 text-orange-400",
-  severeStorms: "border-blue-800/60 text-blue-400",
-  floods:       "border-cyan-800/60 text-cyan-400",
-  tempExtremes: "border-red-800/60 text-red-400",
-  drought:      "border-yellow-800/60 text-yellow-500",
-  landslides:   "border-stone-700/60 text-stone-400",
+const EXTREME_STYLES: Record<string, { border: string; text: string }> = {
+  wildfires:    { border: "border-orange-800/60", text: "text-orange-400" },
+  severeStorms: { border: "border-blue-800/60",   text: "text-blue-400"   },
+  floods:       { border: "border-cyan-800/60",   text: "text-cyan-400"   },
+  tempExtremes: { border: "border-red-800/60",    text: "text-red-400"    },
+  drought:      { border: "border-yellow-800/60", text: "text-yellow-500" },
+  landslides:   { border: "border-stone-700/60",  text: "text-stone-400"  },
 };
+
+const SEVERITY_STYLES: Record<string, { border: string; dot: string }> = {
+  Extreme: { border: "border-red-700/70",    dot: "bg-red-500"    },
+  Severe:  { border: "border-orange-700/70", dot: "bg-orange-500" },
+  Moderate:{ border: "border-yellow-700/70", dot: "bg-yellow-500" },
+};
+
+// Event-type color lookup — matched by keyword priority order
+const EVENT_COLOR_RULES: [RegExp, string][] = [
+  [/tornado/i,                        "text-violet-400"  ],
+  [/hurricane|tropical storm/i,       "text-teal-300"    ],
+  [/fire weather|red flag/i,          "text-orange-400"  ],
+  [/wildfire/i,                       "text-amber-500"   ],
+  [/flash flood/i,                    "text-cyan-400"    ],
+  [/flood/i,                          "text-blue-400"    ],
+  [/blizzard|ice storm/i,             "text-sky-200"     ],
+  [/winter storm|winter weather/i,    "text-sky-300"     ],
+  [/freeze|frost/i,                   "text-blue-200"    ],
+  [/extreme heat|excessive heat/i,    "text-red-400"     ],
+  [/heat/i,                           "text-rose-400"    ],
+  [/dust storm|haboob/i,              "text-yellow-600"  ],
+  [/high wind|wind advisory/i,        "text-emerald-400" ],
+  [/thunderstorm|lightning/i,         "text-yellow-300"  ],
+  [/dense fog|fog/i,                  "text-slate-400"   ],
+  [/marine|coastal|rip current/i,     "text-teal-400"    ],
+  [/air quality|smoke/i,              "text-orange-300"  ],
+  [/avalanche/i,                      "text-indigo-300"  ],
+  [/drought/i,                        "text-yellow-500"  ],
+  [/special weather|statement/i,      "text-gray-400"    ],
+];
+
+function eventColor(event: string): string {
+  for (const [re, cls] of EVENT_COLOR_RULES) {
+    if (re.test(event)) return cls;
+  }
+  return "text-gray-300";
+}
 
 function formatDate(iso: string | null) {
   if (!iso) return "";
@@ -93,6 +131,7 @@ function EventDetailPanel({ category, onClose }: { category: string; onClose: ()
 export function WeatherSection() {
   const { clusters } = useExtremeWeather();
   const { regions } = useRegionalWeather();
+  const { alerts } = useWeatherAlerts();
   const [expandedRegion, setExpandedRegion] = useState<string | null>(null);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
@@ -105,22 +144,60 @@ export function WeatherSection() {
         <span className="text-sm font-semibold text-gray-300 uppercase tracking-wider">🌦 Weather &amp; Climate</span>
       </div>
 
-      {/* Strip 1: Extreme events by type */}
-      {clusters.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs text-gray-600 uppercase tracking-wider">Extreme Events</p>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none -mx-4 px-4">
-            {clusters.map((cluster) => {
-              const colorClass = EXTREME_STYLES[cluster.category] ?? "border-gray-700 text-gray-400";
-              const [borderCls, textCls] = colorClass.split(" ");
-              const isExpanded = expandedCategory === cluster.category;
-              return (
-                <div key={cluster.category} className="flex-shrink-0 w-60 space-y-0">
+      {/* Radar Map */}
+      <WeatherMap />
+
+      {/* Strip 1: Notable Weather — NWS alerts + EONET clusters merged */}
+      <div className="space-y-2">
+        <p className="text-xs text-gray-600 uppercase tracking-wider">Notable Weather</p>
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none -mx-4 px-4">
+
+          {/* NWS alert cards */}
+          {alerts.map(alert => {
+            const style = SEVERITY_STYLES[alert.severity] ?? SEVERITY_STYLES["Moderate"];
+            return (
+              <div
+                key={alert.nws_id}
+                className={`flex-shrink-0 w-60 bg-gray-900 border ${style.border} rounded-xl p-4 space-y-2`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-bold ${eventColor(alert.event)} flex items-center gap-1.5`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${style.dot} animate-pulse`} />
+                    {alert.event}
+                  </span>
+                  <span className="text-xs text-gray-600">{alert.severity}</span>
+                </div>
+                {alert.area_desc && (
+                  <p className="text-xs text-gray-400 flex items-center gap-1">
+                    <svg className="w-2.5 h-2.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="truncate">{alert.area_desc}</span>
+                  </p>
+                )}
+                {alert.headline && (
+                  <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{alert.headline}</p>
+                )}
+                <div className="flex items-center justify-between pt-1 text-xs text-gray-600">
+                  {alert.onset && <span>Since {formatDate(alert.onset)}</span>}
+                  {alert.expires && <span>Exp {formatDate(alert.expires)}</span>}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* EONET extreme event cluster cards */}
+          {clusters.map((cluster) => {
+            const style = EXTREME_STYLES[cluster.category] ?? { border: "border-gray-700", text: "text-gray-400" };
+            const isExpanded = expandedCategory === cluster.category;
+            return (
+              <div key={cluster.category} className="flex-shrink-0 w-60 space-y-0">
                 <button
-                     onClick={() => setExpandedCategory(isExpanded ? null : cluster.category)}
-                     className={`w-full text-left bg-gray-900 border ${isExpanded ? "border-gray-500" : borderCls} hover:border-gray-500 rounded-xl p-4 space-y-2 transition-colors`}>
+                  onClick={() => setExpandedCategory(isExpanded ? null : cluster.category)}
+                  className={`w-full text-left bg-gray-900 border ${isExpanded ? "border-gray-500" : style.border} hover:border-gray-500 rounded-xl p-4 space-y-2 transition-colors`}
+                >
                   <div className="flex items-center justify-between">
-                    <span className={`text-xs font-bold ${textCls} flex items-center gap-1`}>
+                    <span className={`text-xs font-bold ${style.text} flex items-center gap-1`}>
                       <span>{cluster.icon}</span>
                       <span>{cluster.label}</span>
                     </span>
@@ -155,12 +232,15 @@ export function WeatherSection() {
                     onClose={() => setExpandedCategory(null)}
                   />
                 )}
-                </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
+
+          {alerts.length === 0 && clusters.length === 0 && (
+            <p className="text-xs text-gray-600">No active weather alerts.</p>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Strip 2: Regional daily weather — click to expand 3-day */}
       {regions.length > 0 && (

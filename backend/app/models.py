@@ -156,6 +156,21 @@ class ServiceStatus(Base):
     fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
+class NWSAlert(Base):
+    __tablename__ = "nws_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nws_id = Column(String, nullable=False, unique=True)
+    event = Column(String, nullable=False)
+    headline = Column(String, nullable=True)
+    severity = Column(String, nullable=False, default="Unknown")
+    urgency = Column(String, nullable=True)
+    area_desc = Column(String, nullable=True)
+    onset = Column(DateTime(timezone=True), nullable=True)
+    expires = Column(DateTime(timezone=True), nullable=True)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class ClimateEvent(Base):
     __tablename__ = "climate_events"
 
