@@ -12,6 +12,7 @@ import httpx
 from sqlalchemy.orm import Session
 
 from app.models import Summary, Trend
+from app.services.topic_matcher import find_match
 
 logger = logging.getLogger(__name__)
 
@@ -78,20 +79,12 @@ async def fetch_reddit_trending(db: Session) -> list:
         if not title or len(title) < 10:
             continue
 
-        # Check against existing active trends
-        title_lower = title.lower()
-        title_words = set(title_lower.split())
         reddit_sig = _reddit_signal(score, comments)
-        matched_existing = None
-        for existing_title, existing_trend in active_titles.items():
-            overlap = len(title_words & set(existing_title.split())) / max(len(title_words), 1)
-            if overlap >= 0.5:
-                matched_existing = existing_trend
-                break
+        matched_existing = find_match(title, list(active_titles.values()), threshold=0.50)
 
         if matched_existing:
-            # Absorb Reddit signal into the existing entry rather than creating a duplicate
-            matched_existing.signal_score = matched_existing.signal_score + reddit_sig * 0.5
+            matched_existing.signal_score += reddit_sig * 0.5
+            matched_existing.sources_list = list(set((matched_existing.sources_list or []) + ["reddit"]))
             continue
 
         signal = _reddit_signal(score, comments)

@@ -1,25 +1,28 @@
 """
 Wikipedia Trending enrichment service.
 
-Finds Wikipedia articles that are spiking in pageviews today vs. yesterday,
-and BOOSTS the signal score of matching active Google Trends entries.
-Never creates standalone Trend entries.
+Two roles:
+1. BOOST existing active Trends when a Wikipedia article is spiking on the same topic.
+2. CREATE standalone Trend entries for large Wikipedia spikes (rank jumped 20+ positions)
+   with no Google Trends match — surfacing genuinely viral topics early.
 
-Returns the count of trends boosted.
+Returns the count of existing trends boosted.
 """
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
 from sqlalchemy.orm import Session
 
 from app.models import Trend
+from app.services.topic_matcher import find_match
 
 logger = logging.getLogger(__name__)
 
 PAGEVIEW_URL = "https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/{year}/{month:02d}/{day:02d}"
 HEADERS = {"User-Agent": "TrendingNewsSite/1.0 (educational project)"}
+MAX_STANDALONE = 5
 
 PERENNIAL_BLOCKLIST = {
     "main page", "special:search", "wikipedia", "united states", "india",
@@ -51,14 +54,6 @@ def _wiki_signal(rank_today: int, rank_yesterday: Optional[int], views: int) -> 
     return base
 
 
-def _title_overlap(a: str, b: str) -> float:
-    wa = set(a.lower().split())
-    wb = set(b.lower().split())
-    if not wa:
-        return 0.0
-    return len(wa & wb) / len(wa)
-
-
 def _url(d: date) -> str:
     return PAGEVIEW_URL.format(year=d.year, month=d.month, day=d.day)
 
@@ -71,17 +66,11 @@ def _articles(resp) -> list:
 
 
 async def fetch_wikipedia_trending(db: Session) -> int:
-    """
-    Fetches Wikipedia pageview spikes and boosts matching active Google Trends.
-    Returns count of trends boosted.
-    """
     active_trends = (
         db.query(Trend)
-        .filter(Trend.is_active == True, Trend.source == "rss")  # noqa
+        .filter(Trend.is_active == True)  # noqa
         .all()
     )
-    if not active_trends:
-        return 0
 
     today = date.today()
     yesterday = today - timedelta(days=1)
@@ -89,7 +78,6 @@ async def fetch_wikipedia_trending(db: Session) -> int:
     try:
         async with httpx.AsyncClient(headers=HEADERS, timeout=12.0) as client:
             r_today = await client.get(_url(today))
-            # Fall back to yesterday if today's data isn't available yet (UTC server)
             if r_today.status_code == 404:
                 r_today = await client.get(_url(yesterday))
                 yesterday = yesterday - timedelta(days=1)
@@ -113,8 +101,9 @@ async def fetch_wikipedia_trending(db: Session) -> int:
         logger.error("Wikipedia trending fetch failed: %s", e)
         return 0
 
-    active_map = {t.title.lower(): t for t in active_trends}
     boosted_ids: set = set()
+    standalone_created = 0
+    now = datetime.now(timezone.utc)
 
     for article_title, today_data in articles_today.items():
         if _is_perennial(article_title):
@@ -124,31 +113,39 @@ async def fetch_wikipedia_trending(db: Session) -> int:
         ydata = articles_yesterday.get(article_title)
         wiki_sig = _wiki_signal(today_data["rank"], ydata["rank"] if ydata else None, today_data["views"])
 
-        # Only process meaningful spikes
         if wiki_sig < 80:
             continue
 
-        # Find best matching active Google Trend
-        best_match: Optional[Trend] = None
-        best_score = 0.0
+        match = find_match(title_clean, active_trends, threshold=0.50)
 
-        for active_title, trend in active_map.items():
-            overlap = _title_overlap(title_clean, active_title)
-            if overlap > best_score and overlap >= 0.50:
-                best_score = overlap
-                best_match = trend
-
-        if best_match:
+        if match:
             boost = wiki_sig * 0.5
-            best_match.signal_score = best_match.signal_score + boost
-            src_list = list(set((best_match.sources_list or []) + ["wikipedia"]))
-            best_match.sources_list = src_list
-            boosted_ids.add(best_match.id)
-            logger.debug(
-                "Wikipedia boost: '%s' → '%s' +%.0f",
-                title_clean[:40], best_match.title[:40], boost,
-            )
+            match.signal_score += boost
+            match.sources_list = list(set((match.sources_list or []) + ["wikipedia"]))
+            boosted_ids.add(match.id)
+            logger.debug("Wikipedia boost: '%s' → '%s' +%.0f", title_clean[:40], match.title[:40], boost)
+        elif standalone_created < MAX_STANDALONE:
+            # Large spike with no Google match — check if it warrants standalone entry
+            rank_delta = (ydata["rank"] - today_data["rank"]) if ydata else 999
+            if rank_delta >= 20 or ydata is None:
+                base_signal = wiki_sig * 0.7
+                trend = Trend(
+                    title=title_clean,
+                    source="wikipedia",
+                    is_active=True,
+                    first_seen_at=now,
+                    fetched_at=now,
+                    appearance_count=1,
+                    signal_score=base_signal,
+                    sources_list=["wikipedia"],
+                    geo="US",
+                    traffic_volume=f"{today_data['views'] // 1000}K views",
+                )
+                db.add(trend)
+                active_trends.append(trend)
+                standalone_created += 1
+                logger.info("Wikipedia standalone: '%s' (%.0f signal, rank delta %+d)", title_clean[:60], base_signal, rank_delta)
 
     db.commit()
-    logger.info("Wikipedia enrichment: boosted %d existing trends", len(boosted_ids))
+    logger.info("Wikipedia enrichment: boosted %d existing trends, created %d standalone", len(boosted_ids), standalone_created)
     return len(boosted_ids)

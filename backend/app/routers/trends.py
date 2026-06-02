@@ -91,7 +91,7 @@ def list_trends(limit: int = 50, db: Session = Depends(get_db)):
     """All active trends sorted by signal score — multi-source aggregation."""
     trends = (
         db.query(Trend)
-        .filter(Trend.is_active == True, Trend.source == "rss")  # noqa: E712
+        .filter(Trend.is_active == True)  # noqa: E712
         .order_by(Trend.signal_score.desc(), Trend.fetched_at.desc())
         .limit(limit)
         .all()

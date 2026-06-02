@@ -24,26 +24,30 @@ RSS_24H = "https://trends.google.com/trending/rss?geo=US"
 RSS_4H  = "https://trends.google.com/trending/rss?geo=US&hours=4"
 HT_NS   = "https://trends.google.com/trending/rss"
 
-# Signal scores per window
-SIGNAL_4H_ONLY   = 280   # Hot right now, very fresh
-SIGNAL_24H_ONLY  = 160   # Trending today
-SIGNAL_BOTH      = 380   # Cross-validated across windows
-SIGNAL_FALLBACK  = 80    # Appeared but no traffic info
+# Base signal per window — traffic bonus is added on top
+SIGNAL_4H_ONLY  = 280   # Hot right now, very fresh
+SIGNAL_24H_ONLY = 160   # Trending today
+SIGNAL_BOTH     = 380   # Cross-validated across windows
+
+# Traffic bonus lookup (additive on top of base)
+_TRAFFIC_BONUS = {
+    "200":   40,  "500":   80,  "1000":  130,  "2000":  190,
+    "5000":  270, "10K":   380, "50K":   620,  "100K":  860,
+    "200K": 1100, "500K": 1450, "1M":   1800,  "2M":   2300,
+    "5M":   2900, "10M":  3700,
+}
 
 
 def _ht(tag: str) -> str:
     return f"{{{HT_NS}}}{tag}"
 
 
-def _parse_traffic(s: Optional[str]) -> float:
+def _traffic_bonus(s: Optional[str]) -> float:
+    """Returns additive bonus based on approximate traffic volume string."""
     if not s:
-        return SIGNAL_FALLBACK
-    table = {
-        "200": 60, "500": 100, "1000": 160, "2000": 230,
-        "5000": 320, "10K": 450, "50K": 700, "100K": 950,
-    }
+        return 0.0
     key = s.strip().rstrip("+").upper()
-    return float(table.get(key, 80))
+    return float(_TRAFFIC_BONUS.get(key, 0.0))
 
 
 async def _fetch_feed(url: str, window: str) -> dict:
@@ -124,10 +128,9 @@ async def fetch_google_trends_multi(db: Session) -> list:
             base_signal = SIGNAL_4H_ONLY
         else:
             window = "24h"
-            base_signal = max(SIGNAL_24H_ONLY, _parse_traffic(traffic))
+            base_signal = SIGNAL_24H_ONLY
 
-        traffic_signal = _parse_traffic(traffic)
-        signal = max(base_signal, traffic_signal)
+        signal = base_signal + _traffic_bonus(traffic)
 
         source_tags = []
         if in_4h:

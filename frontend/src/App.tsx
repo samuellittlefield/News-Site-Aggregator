@@ -63,7 +63,7 @@ export default function App() {
               ))}
             </div>
           ) : (
-            <TrendCarousel trends={trends} onSelect={setSelectedId} count={trends.length} />
+            <TrendCarousel trends={trends} onSelect={setSelectedId} />
           )
         )}
 
