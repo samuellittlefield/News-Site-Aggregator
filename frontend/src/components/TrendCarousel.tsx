@@ -2,8 +2,6 @@ import { useMemo, useState } from "react";
 import { Trend, useAnomalyTrends } from "../api/client";
 import { TrendCard } from "./TrendCard";
 
-const PAGE_SIZE = 20;
-
 type Mode = "default" | "scramble" | "anomaly";
 
 function AnomalyLabel({ trend }: { trend: Trend }) {
@@ -24,13 +22,11 @@ interface Props {
 export function TrendCarousel({ trends, onSelect }: Props) {
   const [mode, setMode] = useState<Mode>("default");
   const [scrambleSeed, setScrambleSeed] = useState(0);
-  const [page, setPage] = useState(1);
   const { trends: anomalies, loading: anomalyLoading } = useAnomalyTrends();
 
-  const sortedTrends = useMemo(() => {
+  const displayTrends = useMemo(() => {
     if (mode !== "scramble") return trends;
     const all = [...trends];
-    // seeded shuffle
     for (let i = all.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [all[i], all[j]] = [all[j], all[i]];
@@ -39,24 +35,15 @@ export function TrendCarousel({ trends, onSelect }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, scrambleSeed, trends]);
 
-  const displayTrends = sortedTrends.slice(0, page * PAGE_SIZE);
-  const hasMore = displayTrends.length < sortedTrends.length;
-
   const handleScramble = () => {
     setMode("scramble");
     setScrambleSeed(s => s + 1);
-    setPage(1);
-  };
-
-  const handleModeChange = (m: Mode) => {
-    setMode(m);
-    setPage(1);
   };
 
   return (
     <section>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <p className="text-xs text-gray-500">
             <span className="text-gray-300 font-medium">{trends.length}</span> topics
@@ -70,7 +57,7 @@ export function TrendCarousel({ trends, onSelect }: Props) {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => handleModeChange("default")}
+            onClick={() => setMode("default")}
             className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${
               mode === "default" ? "border-gray-600 text-gray-300 bg-gray-800" : "border-gray-800 text-gray-600 hover:text-gray-400"
             }`}
@@ -86,7 +73,7 @@ export function TrendCarousel({ trends, onSelect }: Props) {
             🔀 Scramble
           </button>
           <button
-            onClick={() => handleModeChange("anomaly")}
+            onClick={() => setMode("anomaly")}
             className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${
               mode === "anomaly" ? "border-purple-700 text-purple-400 bg-purple-950/40" : "border-gray-800 text-gray-600 hover:text-gray-400"
             }`}
@@ -96,18 +83,18 @@ export function TrendCarousel({ trends, onSelect }: Props) {
         </div>
       </div>
 
-      {/* Anomaly mode */}
+      {/* Anomaly mode — single row, full-size cards, horizontal scroll */}
       {mode === "anomaly" && (
         anomalyLoading ? (
-          <div className="grid grid-cols-2 gap-3">
-            {[1,2,3,4].map(i => <div key={i} className="h-44 bg-gray-900 rounded-xl animate-pulse" />)}
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-none">
+            {[1,2,3,4].map(i => <div key={i} className="flex-shrink-0 w-64 h-44 bg-gray-900 rounded-xl animate-pulse" />)}
           </div>
         ) : anomalies.length === 0 ? (
-          <p className="text-sm text-gray-600 py-4">No anomalies detected right now — everything is trending normally.</p>
+          <p className="text-sm text-gray-600 py-4">No anomalies detected right now.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-none">
             {anomalies.map(t => (
-              <div key={t.id} className="flex flex-col gap-1.5">
+              <div key={t.id} className="flex-shrink-0 w-64 flex flex-col gap-1.5">
                 <AnomalyLabel trend={t} />
                 <TrendCard trend={t} onClick={() => onSelect(t.id)} />
               </div>
@@ -116,35 +103,29 @@ export function TrendCarousel({ trends, onSelect }: Props) {
         )
       )}
 
-      {/* Default / Scramble mode — 2-column grid */}
+      {/* Default / Scramble — 2-row horizontal grid, compact cards */}
       {mode !== "anomaly" && (
-        <>
-          <div className="grid grid-cols-2 gap-3">
+        <div
+          className="overflow-x-auto -mx-4 px-4 pb-2 scrollbar-none"
+        >
+          <div
+            className="grid grid-rows-2 grid-flow-col gap-2"
+            style={{ gridAutoColumns: "11rem", gridAutoRows: "5.5rem" }}
+          >
             {displayTrends.map(trend => (
-              <div key={trend.id} className="flex flex-col gap-1">
-                {/* Cluster label above card */}
+              <div key={trend.id} className="flex flex-col gap-0.5 min-w-0">
                 {trend.cluster_name && (
-                  <p className="text-[10px] text-gray-600 font-medium px-1 truncate">
-                    <span className="text-gray-700">●</span> {trend.cluster_name}
+                  <p className="text-[9px] text-gray-700 font-medium px-0.5 truncate leading-tight">
+                    ● {trend.cluster_name}
                   </p>
                 )}
-                <TrendCard trend={trend} onClick={() => onSelect(trend.id)} />
+                <div className="flex-1 min-h-0">
+                  <TrendCard trend={trend} onClick={() => onSelect(trend.id)} compact />
+                </div>
               </div>
             ))}
           </div>
-
-          {hasMore && (
-            <div className="mt-6 flex flex-col items-center gap-1">
-              <button
-                onClick={() => setPage(p => p + 1)}
-                className="text-sm text-gray-500 hover:text-gray-300 border border-gray-800 hover:border-gray-600 rounded-lg px-5 py-2 transition-colors"
-              >
-                Show more · {Math.min(PAGE_SIZE, sortedTrends.length - displayTrends.length)} remaining
-              </button>
-              <p className="text-xs text-gray-700">Showing {displayTrends.length} of {sortedTrends.length}</p>
-            </div>
-          )}
-        </>
+        </div>
       )}
     </section>
   );

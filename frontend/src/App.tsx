@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { triggerRefresh, useTrends } from "./api/client";
 import { AstronomySection } from "./components/AstronomySection";
 import { NewsSegment } from "./components/NewsSegment";
@@ -15,6 +15,24 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false);
   const { trends, loading, error, refresh } = useTrends();
 
+  // Push a history entry when opening a trend so the back button works
+  const handleSelect = (id: number) => {
+    window.history.pushState({ trendId: id }, "");
+    setSelectedId(id);
+  };
+
+  const handleBack = () => {
+    setSelectedId(null);
+  };
+
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      if (!e.state?.trendId) setSelectedId(null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await triggerRefresh();
@@ -23,7 +41,7 @@ export default function App() {
   };
 
   if (selectedId !== null) {
-    return <TrendDetail id={selectedId} onBack={() => setSelectedId(null)} />;
+    return <TrendDetail id={selectedId} onBack={handleBack} />;
   }
 
   return (
@@ -63,7 +81,7 @@ export default function App() {
               ))}
             </div>
           ) : (
-            <TrendCarousel trends={trends} onSelect={setSelectedId} />
+            <TrendCarousel trends={trends} onSelect={handleSelect} />
           )
         )}
 
@@ -78,7 +96,7 @@ export default function App() {
         {/* Show velocity analytics if political topics are trending, */}
         {/* otherwise fall back to dedicated news feed */}
         {trends.some(t => t.category === "Politics" || (t.summary?.body ?? "").toLowerCase().includes("congress"))
-          ? <PoliticsSection onSelect={setSelectedId} />
+          ? <PoliticsSection onSelect={handleSelect} />
           : <NewsSegment category="politics" label="Politics" icon="🏛" />
         }
 

@@ -55,14 +55,59 @@ const CATEGORY_STYLES: Record<string, string> = {
 interface Props {
   trend: Trend;
   onClick: () => void;
+  compact?: boolean;
 }
 
-export function TrendCard({ trend, onClick }: Props) {
+export function TrendCard({ trend, onClick, compact = false }: Props) {
   const preview = trend.summary?.body
     ? trend.summary.body.slice(0, 100) + (trend.summary.body.length > 100 ? "…" : "")
     : null;
 
   const wiki = trend.wiki_pages.find((w) => w.is_primary) ?? trend.wiki_pages[0] ?? null;
+
+  if (compact) {
+    return (
+      <button
+        onClick={onClick}
+        className="group text-left w-full h-full bg-gray-900 hover:bg-gray-800 border border-gray-800 hover:border-gray-600 rounded-xl p-3 transition-all duration-150 flex flex-col justify-between gap-2"
+      >
+        <div className="flex items-start justify-between gap-1.5">
+          <h2 className="font-semibold text-white text-sm leading-snug line-clamp-2 group-hover:text-blue-400 transition-colors flex-1">
+            {trend.title}
+          </h2>
+          {trend.appearance_count === 1 && (
+            <span className="relative flex h-1.5 w-1.5 shrink-0 mt-1">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-orange-500" />
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 flex-wrap">
+          {trend.traffic_volume && (
+            <span className="text-[10px] font-medium bg-blue-950 text-blue-300 border border-blue-800 rounded-full px-1.5 py-px">
+              {trend.traffic_volume}
+            </span>
+          )}
+          {trend.category && (
+            <span className={`text-[10px] font-medium border rounded-full px-1.5 py-px ${CATEGORY_STYLES[trend.category] ?? CATEGORY_STYLES.Other}`}>
+              {trend.category}
+            </span>
+          )}
+          <div className="flex items-center gap-1 ml-auto">
+            {dedupeSources(trend.sources_list ?? []).slice(0, 2).map(src => {
+              const tag = SOURCE_TAG_STYLES[src];
+              return tag ? (
+                <span key={src} className={`text-[9px] font-bold border rounded px-1 py-px ${tag.cls}`}>
+                  {tag.label}
+                </span>
+              ) : null;
+            })}
+          </div>
+        </div>
+      </button>
+    );
+  }
 
   return (
     <button
@@ -86,17 +131,10 @@ export function TrendCard({ trend, onClick }: Props) {
             style={{ width: 52, height: 52 }}
           >
             {wiki.thumbnail_url ? (
-              <img
-                src={wiki.thumbnail_url}
-                alt={wiki.title}
-                className="w-full h-full object-cover"
-              />
+              <img src={wiki.thumbnail_url} alt={wiki.title} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-gray-800 flex items-center justify-center text-gray-500 text-xs font-bold">
-                W
-              </div>
+              <div className="w-full h-full bg-gray-800 flex items-center justify-center text-gray-500 text-xs font-bold">W</div>
             )}
-            {/* "Wikipedia" label slides up on hover */}
             <span className="absolute inset-x-0 bottom-0 bg-blue-600/90 text-white text-[9px] font-semibold text-center py-0.5 translate-y-full group-[.wiki-thumb]:translate-y-0 transition-transform leading-tight opacity-0 hover:opacity-100">
               Wiki
             </span>
@@ -108,7 +146,6 @@ export function TrendCard({ trend, onClick }: Props) {
         ) : null}
       </div>
 
-      {/* Traffic badge under title when wiki thumbnail is taking the badge slot */}
       {wiki && trend.traffic_volume && (
         <span className="self-start text-xs font-medium bg-blue-950 text-blue-300 border border-blue-800 rounded-full px-2.5 py-0.5">
           {trend.traffic_volume}
@@ -120,28 +157,19 @@ export function TrendCard({ trend, onClick }: Props) {
       )}
 
       <div className="flex items-center flex-wrap gap-1.5 mt-auto">
-        {/* Category badge */}
         {trend.category && (
           <span className={`text-xs font-medium border rounded-full px-2 py-0.5 ${CATEGORY_STYLES[trend.category] ?? CATEGORY_STYLES.Other}`}>
             {trend.category}
           </span>
         )}
-
-        {/* Velocity indicator */}
         {(trend.rank_velocity > 0 || trend.velocity_abs > 0) && (
           <span className="text-xs font-semibold text-amber-400 flex items-center gap-0.5">
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
             </svg>
-            {trend.rank_velocity > 0
-              ? `↑ ${trend.rank_velocity}`
-              : trend.velocity_abs >= 1000
-                ? `+${(trend.velocity_abs / 1000).toFixed(1)}K`
-                : `+${trend.velocity_abs}`}
+            {trend.rank_velocity > 0 ? `↑ ${trend.rank_velocity}` : trend.velocity_abs >= 1000 ? `+${(trend.velocity_abs / 1000).toFixed(1)}K` : `+${trend.velocity_abs}`}
           </span>
         )}
-
-        {/* Breaking indicator */}
         {trend.appearance_count === 1 && (
           <span className="flex items-center gap-1 text-xs font-semibold text-orange-400">
             <span className="relative flex h-1.5 w-1.5">
@@ -151,11 +179,8 @@ export function TrendCard({ trend, onClick }: Props) {
             Breaking
           </span>
         )}
-
         <div className="flex items-center gap-1.5 ml-auto flex-wrap justify-end">
-          {/* Confidence bars */}
           <ConfidenceBars count={trend.validated_by ?? 0} />
-          {/* Source attribution tags */}
           {dedupeSources(trend.sources_list ?? []).slice(0, 3).map(src => {
             const tag = SOURCE_TAG_STYLES[src];
             return tag ? (
