@@ -156,7 +156,7 @@ export function WeatherSection() {
           {alerts.map(alert => {
             const style = SEVERITY_STYLES[alert.severity] ?? SEVERITY_STYLES["Moderate"];
             const isExpanded = expandedCategory === alert.nws_id;
-            const alertUrl = alert.nws_id.startsWith("http") ? alert.nws_id : `https://api.weather.gov/alerts/${alert.nws_id}`;
+            const alertUrl = `https://alerts.weather.gov/`;
             return (
               <div key={alert.nws_id} className="flex-shrink-0 w-60 space-y-0">
                 <button
@@ -206,7 +206,7 @@ export function WeatherSection() {
                       rel="noopener noreferrer"
                       className="block text-xs text-blue-400 hover:text-blue-300 transition-colors pt-1"
                     >
-                      View full alert on weather.gov ↗
+                      View active alerts on weather.gov ↗
                     </a>
                   </div>
                 )}
