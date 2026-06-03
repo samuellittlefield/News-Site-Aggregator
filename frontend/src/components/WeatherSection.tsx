@@ -156,7 +156,7 @@ export function WeatherSection() {
           {alerts.map(alert => {
             const style = SEVERITY_STYLES[alert.severity] ?? SEVERITY_STYLES["Moderate"];
             const isExpanded = expandedCategory === alert.nws_id;
-            const alertUrl = `https://alerts.weather.gov/`;
+            const alertUrl = `https://www.weather.gov/`;
             return (
               <div key={alert.nws_id} className="flex-shrink-0 w-60 space-y-0">
                 <button
