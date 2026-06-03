@@ -425,6 +425,84 @@ export function useWeatherAlerts() {
   return { alerts, loading };
 }
 
+export interface HousePoll {
+  id: number;
+  poll_id: string;
+  pollster: string;
+  grade: string | null;
+  state: string;
+  district: number;
+  start_date: string | null;
+  end_date: string | null;
+  sample_size: number | null;
+  population: string | null;
+  dem: number | null;
+  rep: number | null;
+  source_url: string | null;
+}
+
+export interface DistrictData {
+  state: string;
+  district: number;
+  cook_rating: string | null;
+  dem_2024: number | null;
+  rep_2024: number | null;
+  margin_2024: number | null;
+  lat: number;
+  lng: number;
+  incumbent_party: string | null;
+  poll_count: number;
+  poll_intensity: number;
+  height: number;
+  latest_margin: number | null;
+  latest_dem: number | null;
+  latest_rep: number | null;
+  latest_pollster: string | null;
+  latest_date: string | null;
+  color: [number, number, number, number];
+}
+
+export interface GenericBallot {
+  source: string;
+  rep: number;
+  dem: number;
+}
+
+export function useHousePolls() {
+  const [polls, setPolls] = useState<HousePoll[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = () => {
+    get<HousePoll[]>("/api/polls/house")
+      .then(d => { setPolls(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+  useEffect(() => { load(); const id = setInterval(load, 30 * 60 * 1000); return () => clearInterval(id); }, []);
+  return { polls, loading };
+}
+
+export function useHouseDistricts() {
+  const [districts, setDistricts] = useState<DistrictData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = () => {
+    get<DistrictData[]>("/api/polls/house/districts")
+      .then(d => { setDistricts(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+  useEffect(() => { load(); const id = setInterval(load, 30 * 60 * 1000); return () => clearInterval(id); }, []);
+  return { districts, loading };
+}
+
+export function useGenericBallot() {
+  const [ballot, setBallot] = useState<GenericBallot[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    get<GenericBallot[]>("/api/polls/generic-ballot")
+      .then(d => { setBallot(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+  return { ballot, loading };
+}
+
 export async function triggerRefresh(): Promise<void> {
   await fetch("/api/refresh", { method: "POST" });
 }

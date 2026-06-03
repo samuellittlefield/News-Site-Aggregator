@@ -156,6 +156,40 @@ class ServiceStatus(Base):
     fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
+class HousePoll(Base):
+    __tablename__ = "house_polls"
+
+    id = Column(Integer, primary_key=True, index=True)
+    poll_id = Column(String, nullable=False, unique=True)
+    pollster = Column(String, nullable=False)
+    grade = Column(String, nullable=True)
+    state = Column(String(2), nullable=False)
+    district = Column(Integer, nullable=False)
+    start_date = Column(DateTime(timezone=True), nullable=True)
+    end_date = Column(DateTime(timezone=True), nullable=True)
+    sample_size = Column(Integer, nullable=True)
+    population = Column(String(4), nullable=True)  # LV/RV/A
+    dem = Column(Float, nullable=True)
+    rep = Column(Float, nullable=True)
+    source_url = Column(String, nullable=True)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class CompetitiveDistrict(Base):
+    __tablename__ = "competitive_districts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    state = Column(String(2), nullable=False)
+    district = Column(Integer, nullable=False)
+    cook_rating = Column(String, nullable=True)   # Toss-up / Lean D / Lean R / Likely D / Likely R
+    dem_2024 = Column(Float, nullable=True)
+    rep_2024 = Column(Float, nullable=True)
+    margin_2024 = Column(Float, nullable=True)    # dem - rep
+    lat = Column(Float, nullable=False)
+    lng = Column(Float, nullable=False)
+    incumbent_party = Column(String(1), nullable=True)  # D / R / O (open)
+
+
 class NWSAlert(Base):
     __tablename__ = "nws_alerts"
 

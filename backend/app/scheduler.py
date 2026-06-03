@@ -22,6 +22,7 @@ from app.services import nyt as nyt_service
 from app.services import situation_builder as situation_builder_service
 from app.services import service_status as service_status_service
 from app.services import nws_alerts as nws_alerts_service
+from app.services import house_polls as house_polls_service
 
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
@@ -134,6 +135,18 @@ async def refresh_nws_alerts():
         db.close()
 
 
+async def refresh_house_polls():
+    logger.info("Refreshing 2026 House polls...")
+    db = SessionLocal()
+    try:
+        result = await house_polls_service.refresh_house_polls(db)
+        logger.info("House polls refresh complete — %d new polls", result.get("new_polls", 0))
+    except Exception as e:
+        logger.exception("House polls refresh failed: %s", e)
+    finally:
+        db.close()
+
+
 async def refresh_breakout():
     logger.info("Starting pytrends breakout refresh...")
     db = SessionLocal()
@@ -187,6 +200,12 @@ def start_scheduler(interval_hours: int = 1):
         refresh_nws_alerts,
         IntervalTrigger(minutes=15),
         id="nws_alerts_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_house_polls,
+        IntervalTrigger(hours=6),
+        id="house_polls_job",
         replace_existing=True,
     )
     scheduler.start()
