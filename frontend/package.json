@@ -12,6 +12,7 @@
     "@deck.gl/core": "^9.3.3",
     "@deck.gl/layers": "^9.3.3",
     "@deck.gl/react": "^9.3.3",
+    "@deck.gl/widgets": "^9.3.3",
     "@types/leaflet": "^1.9.21",
     "leaflet": "^1.9.4",
     "react": "^18.3.1",
