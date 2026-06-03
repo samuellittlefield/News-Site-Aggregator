@@ -156,6 +156,45 @@ class ServiceStatus(Base):
     fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
+class Candidate(Base):
+    __tablename__ = "candidates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    fec_id = Column(String, nullable=True, unique=True)   # None for governors
+    name = Column(String, nullable=False)
+    party = Column(String(4), nullable=True)              # DEM/REP/IND/LIB
+    state = Column(String(2), nullable=False)
+    district = Column(Integer, nullable=True)             # None for Senate/Governor
+    office = Column(String(1), nullable=False)            # H/S/G
+    incumbent_challenge = Column(String(1), nullable=True)  # I/C/O
+    primary_date = Column(Date, nullable=True)
+    primary_status = Column(String, nullable=True)        # upcoming/won/lost/runoff
+    general_status = Column(String, nullable=True)        # Nominee / etc.
+    fundraising_total = Column(Float, nullable=True)
+    cook_rating = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    issue_tags = relationship("CandidateIssueTag", back_populates="candidate", cascade="all, delete-orphan")
+
+
+class CandidateIssueTag(Base):
+    __tablename__ = "candidate_issue_tags"
+
+    id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
+    issue_code = Column(String, nullable=False)
+    ai_suggested = Column(Boolean, default=True, nullable=False)
+    confirmed = Column(Boolean, default=False, nullable=False)
+    rejected = Column(Boolean, default=False, nullable=False)
+    confidence = Column(Float, nullable=True)
+    supporting_text = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    candidate = relationship("Candidate", back_populates="issue_tags")
+
+
 class HousePoll(Base):
     __tablename__ = "house_polls"
 

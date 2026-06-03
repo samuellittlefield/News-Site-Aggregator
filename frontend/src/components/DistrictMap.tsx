@@ -5,15 +5,20 @@ import { DistrictData } from "../api/client";
 // and import only what we need
 let DeckGL: any = null;
 let ColumnLayer: any = null;
+let TileLayer: any = null;
+let BitmapLayer: any = null;
 
 async function loadDeck() {
   if (DeckGL) return;
-  const [deckModule, layersModule] = await Promise.all([
+  const [deckModule, layersModule, geoLayersModule] = await Promise.all([
     import("@deck.gl/react"),
     import("@deck.gl/layers"),
+    import("@deck.gl/geo-layers"),
   ]);
   DeckGL = deckModule.default ?? deckModule.DeckGL;
   ColumnLayer = layersModule.ColumnLayer;
+  BitmapLayer = layersModule.BitmapLayer;
+  TileLayer = (geoLayersModule as any).TileLayer;
 }
 
 const INITIAL_VIEW = {
@@ -55,6 +60,22 @@ export function DistrictMap({ districts }: Props) {
   }
 
   const data = districts.filter(d => gradeFilter === "all" || d.poll_count > 0);
+
+  const basemap = new TileLayer({
+    id: "basemap",
+    data: "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+    minZoom: 0,
+    maxZoom: 19,
+    tileSize: 256,
+    renderSubLayers: (props: any) => {
+      const { boundingBox } = props.tile;
+      return new BitmapLayer(props, {
+        data: null,
+        image: props.data,
+        bounds: [boundingBox[0][0], boundingBox[0][1], boundingBox[1][0], boundingBox[1][1]],
+      });
+    },
+  });
 
   const layer = new ColumnLayer({
     id: "districts",
@@ -108,7 +129,7 @@ export function DistrictMap({ districts }: Props) {
           ref={deckRef}
           initialViewState={INITIAL_VIEW}
           controller={true}
-          layers={[layer]}
+          layers={[basemap, layer]}
           style={{ position: "relative" }}
           parameters={{ depthTest: true }}
         >

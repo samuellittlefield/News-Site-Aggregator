@@ -26,16 +26,6 @@ export function PollsPage() {
         {/* Generic ballot headline */}
         {!ballotLoading && <GenericBallotBar ballot={ballot} />}
 
-        {/* Poll carousel */}
-        <div className="space-y-2">
-          <p className="text-xs text-gray-600 uppercase tracking-wider">Recent Polls</p>
-          {loading ? (
-            <div className="h-24 bg-gray-900 rounded-xl animate-pulse" />
-          ) : (
-            <PollCarousel polls={polls} ballot={ballot} />
-          )}
-        </div>
-
         {/* 3D district map */}
         <div className="space-y-2">
           <p className="text-xs text-gray-600 uppercase tracking-wider">
@@ -48,6 +38,16 @@ export function PollsPage() {
             <div className="h-96 bg-gray-900 rounded-xl animate-pulse" />
           ) : (
             <DistrictMap districts={districts} />
+          )}
+        </div>
+
+        {/* Poll carousel */}
+        <div className="space-y-2">
+          <p className="text-xs text-gray-600 uppercase tracking-wider">Recent Polls</p>
+          {loading ? (
+            <div className="h-24 bg-gray-900 rounded-xl animate-pulse" />
+          ) : (
+            <PollCarousel polls={polls} ballot={ballot} />
           )}
         </div>
 

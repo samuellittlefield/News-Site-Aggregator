@@ -23,6 +23,8 @@ from app.services import situation_builder as situation_builder_service
 from app.services import service_status as service_status_service
 from app.services import nws_alerts as nws_alerts_service
 from app.services import house_polls as house_polls_service
+from app.services import fec_candidates as fec_candidates_service
+from app.services import issue_tagger as issue_tagger_service
 
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
@@ -135,6 +137,31 @@ async def refresh_nws_alerts():
         db.close()
 
 
+async def refresh_candidates():
+    logger.info("Refreshing 2026 candidates from FEC...")
+    db = SessionLocal()
+    try:
+        result = await fec_candidates_service.refresh_candidates(db)
+        logger.info("Candidates refresh: House=%d Senate=%d Gov=%d",
+                    result["house"], result["senate"], result["governors"])
+    except Exception as e:
+        logger.exception("Candidates refresh failed: %s", e)
+    finally:
+        db.close()
+
+
+async def run_issue_tagger():
+    logger.info("Running AI issue tagger...")
+    db = SessionLocal()
+    try:
+        count = await issue_tagger_service.tag_candidates(db)
+        logger.info("Issue tagger: %d suggestions added", count)
+    except Exception as e:
+        logger.exception("Issue tagger failed: %s", e)
+    finally:
+        db.close()
+
+
 async def refresh_house_polls():
     logger.info("Refreshing 2026 House polls...")
     db = SessionLocal()
@@ -206,6 +233,18 @@ def start_scheduler(interval_hours: int = 1):
         refresh_house_polls,
         IntervalTrigger(hours=6),
         id="house_polls_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_candidates,
+        IntervalTrigger(hours=24),
+        id="candidates_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        run_issue_tagger,
+        IntervalTrigger(days=7),
+        id="issue_tagger_job",
         replace_existing=True,
     )
     scheduler.start()

@@ -503,6 +503,123 @@ export function useGenericBallot() {
   return { ballot, loading };
 }
 
+export interface IssueTaxonomyItem {
+  code: string;
+  label: string;
+}
+
+export interface IssueTag {
+  id: number;
+  issue_code: string;
+  issue_label: string;
+  ai_suggested: boolean;
+  confirmed: boolean;
+  rejected: boolean;
+  confidence: number | null;
+  supporting_text: string | null;
+  created_at: string;
+}
+
+export interface CandidateSummary {
+  id: number;
+  fec_id: string | null;
+  name: string;
+  party: string | null;
+  state: string;
+  district: number | null;
+  office: string;
+  incumbent_challenge: string | null;
+  primary_date: string | null;
+  primary_status: string | null;
+  general_status: string | null;
+  fundraising_total: number | null;
+  cook_rating: string | null;
+  notes: string | null;
+  confirmed_issues: string[];
+}
+
+export interface CandidateDetail extends CandidateSummary {
+  issue_tags: IssueTag[];
+}
+
+export interface PendingTag {
+  tag_id: number;
+  candidate_id: number;
+  candidate_name: string;
+  candidate_office: string;
+  candidate_state: string;
+  candidate_district: number | null;
+  candidate_party: string | null;
+  issue_code: string;
+  issue_label: string;
+  confidence: number | null;
+  supporting_text: string | null;
+}
+
+export function useCandidates(office?: string, state?: string) {
+  const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (office) params.set("office", office);
+    if (state) params.set("state", state);
+    get<CandidateSummary[]>(`/api/candidates?${params}`)
+      .then(d => { setCandidates(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [office, state]);
+  return { candidates, loading };
+}
+
+export function usePendingTags() {
+  const [tags, setTags] = useState<PendingTag[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = () => {
+    get<PendingTag[]>("/api/candidates/issues/pending")
+      .then(d => { setTags(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []);
+  return { tags, loading, refresh: load };
+}
+
+export function useIssueTaxonomy() {
+  const [taxonomy, setTaxonomy] = useState<IssueTaxonomyItem[]>([]);
+  useEffect(() => {
+    get<IssueTaxonomyItem[]>("/api/candidates/taxonomy")
+      .then(setTaxonomy)
+      .catch(() => {});
+  }, []);
+  return taxonomy;
+}
+
+export async function confirmTag(candidateId: number, tagId: number): Promise<void> {
+  await fetch(`/api/candidates/${candidateId}/issues/${tagId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ confirmed: true, rejected: false }),
+  });
+}
+
+export async function rejectTag(candidateId: number, tagId: number): Promise<void> {
+  await fetch(`/api/candidates/${candidateId}/issues/${tagId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rejected: true }),
+  });
+}
+
+export async function addManualTag(
+  candidateId: number,
+  issueCode: string,
+  supportingText?: string,
+): Promise<void> {
+  await fetch(`/api/candidates/${candidateId}/issues`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ issue_code: issueCode, supporting_text: supportingText }),
+  });
+}
+
 export async function triggerRefresh(): Promise<void> {
   await fetch("/api/refresh", { method: "POST" });
 }

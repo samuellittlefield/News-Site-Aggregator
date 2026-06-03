@@ -8,8 +8,9 @@ import { TrendCarousel } from "./components/TrendCarousel";
 import { TrendDetail } from "./components/TrendDetail";
 import { WeatherSection } from "./components/WeatherSection";
 import { PollsPage } from "./pages/PollsPage";
+import { AdminPage } from "./pages/AdminPage";
 
-type Page = "monitor" | "polling";
+type Page = "monitor" | "polling" | "admin";
 
 const DIVIDER = <div className="border-t border-gray-800/60" />;
 
@@ -99,6 +100,9 @@ export default function App() {
 
       {/* Polling page */}
       {activePage === "polling" && <PollsPage />}
+
+      {/* Admin page — not linked from nav, accessed via handlePageSwitch("admin") */}
+      {activePage === "admin" && <AdminPage />}
 
       {/* Situation Monitor page */}
       {activePage === "monitor" && (
