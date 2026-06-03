@@ -400,6 +400,8 @@ export interface NWSAlert {
   severity: string;
   urgency: string | null;
   area_desc: string | null;
+  sender_name: string | null;
+  wfo_url: string | null;
   onset: string | null;
   expires: string | null;
 }

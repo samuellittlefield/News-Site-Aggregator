@@ -166,6 +166,8 @@ class NWSAlert(Base):
     severity = Column(String, nullable=False, default="Unknown")
     urgency = Column(String, nullable=True)
     area_desc = Column(String, nullable=True)
+    sender_name = Column(String, nullable=True)
+    wfo_url = Column(String, nullable=True)
     onset = Column(DateTime(timezone=True), nullable=True)
     expires = Column(DateTime(timezone=True), nullable=True)
     fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

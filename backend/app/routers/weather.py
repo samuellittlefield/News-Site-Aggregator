@@ -181,6 +181,8 @@ class NWSAlertOut(BaseModel):
     severity: str
     urgency: Optional[str]
     area_desc: Optional[str]
+    sender_name: Optional[str]
+    wfo_url: Optional[str]
     onset: Optional[datetime]
     expires: Optional[datetime]
 
