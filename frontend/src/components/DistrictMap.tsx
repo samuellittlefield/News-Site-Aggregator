@@ -1,25 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import DeckGL from "@deck.gl/react";
+import { BitmapLayer, ColumnLayer } from "@deck.gl/layers";
+import { TileLayer } from "@deck.gl/geo-layers";
+import { useRef, useState } from "react";
 import { DistrictData } from "../api/client";
-
-// Deck.gl renders in a canvas — load dynamically to avoid SSR issues
-// and import only what we need
-let DeckGL: any = null;
-let ColumnLayer: any = null;
-let TileLayer: any = null;
-let BitmapLayer: any = null;
-
-async function loadDeck() {
-  if (DeckGL) return;
-  const [deckModule, layersModule, geoLayersModule] = await Promise.all([
-    import("@deck.gl/react"),
-    import("@deck.gl/layers"),
-    import("@deck.gl/geo-layers"),
-  ]);
-  DeckGL = deckModule.default ?? deckModule.DeckGL;
-  ColumnLayer = layersModule.ColumnLayer;
-  BitmapLayer = layersModule.BitmapLayer;
-  TileLayer = (geoLayersModule as any).TileLayer;
-}
 
 const INITIAL_VIEW = {
   longitude: -96,
@@ -42,19 +25,14 @@ interface Props {
 }
 
 export function DistrictMap({ districts }: Props) {
-  const [loaded, setLoaded] = useState(false);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; d: DistrictData } | null>(null);
   const [gradeFilter, setGradeFilter] = useState<"all" | "ab">("all");
   const deckRef = useRef<any>(null);
 
-  useEffect(() => {
-    loadDeck().then(() => setLoaded(true)).catch(() => {});
-  }, []);
-
-  if (!loaded || districts.length === 0) {
+  if (districts.length === 0) {
     return (
       <div className="w-full rounded-xl border border-gray-800 bg-gray-900 flex items-center justify-center text-gray-600 text-sm" style={{ height: 400 }}>
-        {!loaded ? "Loading 3D map…" : "No district data"}
+        No district data
       </div>
     );
   }
@@ -70,7 +48,7 @@ export function DistrictMap({ districts }: Props) {
     renderSubLayers: (props: any) => {
       const { boundingBox } = props.tile;
       return new BitmapLayer(props, {
-        data: null,
+        data: undefined,
         image: props.data,
         bounds: [boundingBox[0][0], boundingBox[0][1], boundingBox[1][0], boundingBox[1][1]],
       });
@@ -131,7 +109,7 @@ export function DistrictMap({ districts }: Props) {
           controller={true}
           layers={[basemap, layer]}
           style={{ position: "relative" }}
-          parameters={{ depthTest: true }}
+          parameters={{ depth: true } as any}
         >
           {/* CartoDB dark basemap tiles via plain tile layer */}
           <div
