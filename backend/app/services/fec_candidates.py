@@ -85,7 +85,9 @@ async def _fec_paginate(client: httpx.AsyncClient, endpoint: str, params: dict) 
     return results
 
 
-def _party_short(party_full: str) -> str:
+def _party_short(party_full: Optional[str]) -> str:
+    if not party_full:
+        return "OTH"
     mapping = {"DEMOCRATIC PARTY": "DEM", "REPUBLICAN PARTY": "REP",
                "INDEPENDENT": "IND", "LIBERTARIAN PARTY": "LIB",
                "GREEN PARTY": "GRN", "NO PARTY PREFERENCE": "NPP"}
