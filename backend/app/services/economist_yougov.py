@@ -40,9 +40,12 @@ PDF_LINK_RE = re.compile(r"https://d3nkl3psvxxpe9\.cloudfront\.net/documents/\S+
 TRACKED_QUESTIONS: dict[str, list[str]] = {
     "trump_approval":       ["presidenttrumpjobapproval"],
     "direction_of_country": ["directionofcountry"],
-    "issue_economy":        ["jobsandtheeconomy"],
-    "issue_inflation":      ["inflationprices"],
-    "issue_immigration":    ["issueapprovalimmigration"],   # avoid SupportDetainingImmigrants etc.
+    # Require the "issueapproval" prefix so we match "Trump Issue Approval — X"
+    # and NOT the separate "Issue Importance — X" tables (which share the topic
+    # suffix but use an importance scale, not approve/disapprove).
+    "issue_economy":        ["issueapprovaljobsandtheeconomy"],
+    "issue_inflation":      ["issueapprovalinflationprices"],
+    "issue_immigration":    ["issueapprovalimmigration"],
     "vance_approval":       ["jdvancejobapproval", "vancejobapproval"],
     "congress_approval":    ["approvalofuscongress"],
     "scotus_approval":      ["supremecourtoftheunitedstates"],
@@ -70,6 +73,7 @@ MONTHS = {m: i for i, m in enumerate(
      "August", "September", "October", "November", "December"], start=1)}
 
 MAX_REPORTS_PER_RUN = 6   # cap downloads per refresh; back-catalog fills over time
+UPGRADE_PER_RUN = 12      # re-derive readable title/prompt for stale reports per refresh
 
 
 # ── Wikipedia link discovery ──────────────────────────────────────────────────
@@ -178,6 +182,49 @@ def _norm_title(title: str) -> str:
     return re.sub(r"[^a-z0-9]", "", title.lower())
 
 
+# Dot leaders in TOC rows ("Title . . . 61") and data summaries ("approve ...... 27%"),
+# but NOT a trailing ellipsis in a question ("...are...").
+_TOC_DOTS = re.compile(r"\.\s\.\s\.|\.{4,}")
+
+
+def _readable_headings(pdf) -> dict[str, dict]:
+    """Map question_code -> {title, prompt} using a lower x_tolerance pass.
+
+    The default extraction (x_tolerance=3) merges words on these tightly-kerned
+    PDFs ("PresidentTrumpJobApproval"); x_tolerance=2 preserves the spaces and
+    recovers the real heading + survey-question wording. We only use this for the
+    title/prompt text — the numeric table parsing stays on the default pass,
+    which it's proven against (lower tolerance can split column headers like
+    "100k+").
+    """
+    out: dict[str, dict] = {}
+    for page in pdf.pages:
+        text = page.extract_text(x_tolerance=2) or ""
+        lines = text.split("\n")
+        body = lines[2:] if len(lines) > 2 else lines  # skip repeated poll header
+        for i, line in enumerate(body):
+            s = line.strip()
+            # Skip table-of-contents rows: "23. Title . . . . . . 61" — dot leaders.
+            if _TOC_DOTS.search(s):
+                continue
+            m = HEADING_RE.match(s)
+            if not m:
+                continue
+            code = m.group(1)
+            prompt = ""
+            for nxt in body[i + 1:i + 3]:
+                s2 = nxt.strip()
+                if not s2 or s2.startswith("Total ") or HEADING_RE.match(s2):
+                    continue
+                # Skip dot-leader / data lines (e.g. "Strongly approve ... 27%").
+                if "%" in s2 or _TOC_DOTS.search(s2):
+                    continue
+                prompt = s2
+                break
+            out.setdefault(code, {"title": m.group(2).strip(), "prompt": prompt})
+    return out
+
+
 def _extract_questions(pdf) -> dict[str, dict]:
     """Walk pages, group lines under the current numbered heading, and return
     {question_key: {code, title, text, blocks}} for tracked questions only."""
@@ -269,6 +316,9 @@ async def _process_report(url: str, db: Session) -> int:
         logger.info("Econ/YouGov %s: no tracked questions found", url[-24:])
         return 0
 
+    # Readable title/prompt (spaces preserved) keyed by question code.
+    readable = _readable_headings(pdf)
+
     report = EconYouGovReport(
         source_url=url,
         title=header["title"],
@@ -281,12 +331,13 @@ async def _process_report(url: str, db: Session) -> int:
     db.flush()  # assign report.id
 
     for key, q in questions.items():
+        r = readable.get(q["code"], {})
         db.add(EconYouGovCrosstab(
             report_id=report.id,
             question_code=q["code"],
             question_key=key,
-            question_title=q["title"],
-            question_text=q["text"],
+            question_title=r.get("title") or q["title"],
+            question_text=r.get("prompt") or q["text"],
             blocks=q["blocks"],
             topline=_topline(q["blocks"]),
         ))
@@ -294,6 +345,54 @@ async def _process_report(url: str, db: Session) -> int:
     logger.info("Econ/YouGov %s (%s): %d questions stored",
                 header.get("end_date"), url[-20:], len(questions))
     return len(questions)
+
+
+async def _reprocess_stale_reports(db: Session, limit: int) -> int:
+    """Fully re-process reports ingested before the current parser: re-match
+    questions (fixes loose-needle mismatches) and re-derive readable title/prompt.
+    Self-heals prod over a refresh or two without any manual migration.
+
+    Staleness signal: space-stripped question_text, which only old rows have.
+    """
+    fixed = 0
+    async with httpx.AsyncClient(headers=HEADERS, timeout=40.0) as client:
+        for rep in db.query(EconYouGovReport).all():
+            if fixed >= limit:
+                break
+            # Stale = no crosstab has a readable (spaced) title or prompt yet.
+            # Once re-processed, standard questions gain spaces and the report
+            # settles (won't re-download every refresh).
+            if any(" " in (ct.question_title or "") or " " in (ct.question_text or "")
+                   for ct in rep.crosstabs):
+                continue
+            try:
+                resp = await client.get(rep.source_url)
+                if resp.status_code != 200:
+                    continue
+                pdf = pdfplumber.open(io.BytesIO(resp.content))
+                questions = _extract_questions(pdf)
+                readable = _readable_headings(pdf)
+            except Exception as e:
+                logger.debug("Reprocess fetch failed %s: %s", rep.source_url[-20:], e)
+                continue
+            if not questions:
+                continue
+            for ct in list(rep.crosstabs):
+                db.delete(ct)
+            db.flush()
+            for key, q in questions.items():
+                r = readable.get(q["code"], {})
+                db.add(EconYouGovCrosstab(
+                    report_id=rep.id, question_code=q["code"], question_key=key,
+                    question_title=r.get("title") or q["title"],
+                    question_text=r.get("prompt") or q["text"],
+                    blocks=q["blocks"], topline=_topline(q["blocks"]),
+                ))
+            db.commit()
+            fixed += 1
+    if fixed:
+        logger.info("Econ/YouGov: re-processed %d stale reports", fixed)
+    return fixed
 
 
 async def refresh_economist_yougov(db: Session) -> dict:
@@ -319,6 +418,13 @@ async def refresh_economist_yougov(db: Session) -> dict:
             db.rollback()
             logger.warning("Econ/YouGov report failed %s: %s", url[-20:], e)
 
-    logger.info("Econ/YouGov refresh: %d new reports, %d questions",
-                new_reports, total_q)
-    return {"new_reports": new_reports, "questions": total_q}
+    try:
+        reprocessed = await _reprocess_stale_reports(db, UPGRADE_PER_RUN)
+    except Exception as e:
+        db.rollback()
+        reprocessed = 0
+        logger.warning("Econ/YouGov reprocess failed: %s", e)
+
+    logger.info("Econ/YouGov refresh: %d new reports, %d questions, %d reprocessed",
+                new_reports, total_q, reprocessed)
+    return {"new_reports": new_reports, "questions": total_q, "reprocessed": reprocessed}

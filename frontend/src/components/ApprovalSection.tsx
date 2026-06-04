@@ -230,6 +230,10 @@ export function ApprovalSection() {
           </button>
           {expanded && (
             <div className="border border-gray-800 rounded-xl p-4 space-y-5">
+              {/* Show the survey wording only once it's the readable (spaced) form. */}
+              {crosstab.question_text && crosstab.question_text.includes(" ") && (
+                <p className="text-xs text-gray-400 italic">“{crosstab.question_text}”</p>
+              )}
               {crosstab.blocks.map((b, i) => <CrosstabGrid key={i} block={b} />)}
               {crosstab.source_url && (
                 <a
