@@ -16,7 +16,8 @@ from app.routers import astronomy as astronomy_router
 from app.routers import status as status_router
 from app.routers import polls as polls_router
 from app.routers import candidates as candidates_router
-from app.scheduler import refresh_all, refresh_breakout, refresh_candidates, refresh_climate, refresh_extended_sources, refresh_house_polls, refresh_news, refresh_nws_alerts, refresh_status, refresh_weather, start_scheduler
+from app.routers import economist as economist_router
+from app.scheduler import refresh_all, refresh_breakout, refresh_candidates, refresh_climate, refresh_economist, refresh_extended_sources, refresh_house_polls, refresh_news, refresh_nws_alerts, refresh_status, refresh_weather, start_scheduler
 from fastapi import BackgroundTasks
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
@@ -36,6 +37,7 @@ async def _startup_refresh():
     await refresh_nws_alerts()
     await refresh_house_polls()
     await refresh_candidates()
+    await refresh_economist()
     logger.info("Startup refresh complete")
 
 
@@ -71,6 +73,7 @@ app.include_router(astronomy_router.router)
 app.include_router(status_router.router)
 app.include_router(polls_router.router)
 app.include_router(candidates_router.router)
+app.include_router(economist_router.router)
 
 
 async def _do_full_refresh():

@@ -1,4 +1,5 @@
 import { useGenericBallot, useHouseDistricts, useHousePolls } from "../api/client";
+import { ApprovalSection } from "../components/ApprovalSection";
 import { DistrictMap } from "../components/DistrictMap";
 import { GenericBallotBar } from "../components/GenericBallotBar";
 import { PollCarousel } from "../components/PollCarousel";
@@ -25,6 +26,9 @@ export function PollsPage() {
 
         {/* Generic ballot headline */}
         {!ballotLoading && <GenericBallotBar ballot={ballot} />}
+
+        {/* Presidential approval (Economist/YouGov) */}
+        <ApprovalSection />
 
         {/* 3D district map */}
         <div className="space-y-2">
