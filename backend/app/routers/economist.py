@@ -7,9 +7,20 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import EconYouGovCrosstab, EconYouGovReport
-from app.services.economist_yougov import TRACKED_QUESTIONS
+from app.services.economist_yougov import (
+    QUESTION_LABELS,
+    QUESTION_ORDER,
+    TRACKED_QUESTIONS,
+)
 
 router = APIRouter(prefix="/api/economist", tags=["economist"])
+
+
+def _net_from_topline(topline: Optional[dict]) -> Optional[float]:
+    tl = topline or {}
+    if "Approve" in tl and "Disapprove" in tl:
+        return tl["Approve"] - tl["Disapprove"]
+    return None
 
 
 # ── Reports list ──────────────────────────────────────────────────────────────
@@ -47,6 +58,47 @@ def get_reports(db: Session = Depends(get_db)):
     ]
 
 
+# ── Available questions (for the frontend switcher) ───────────────────────────
+
+class QuestionOut(BaseModel):
+    key: str
+    label: str
+    report_count: int
+    latest_net: Optional[float]
+
+
+@router.get("/questions", response_model=List[QuestionOut])
+def get_questions(db: Session = Depends(get_db)):
+    """Tracked questions that actually have data, ordered Core-first."""
+    rows = (
+        db.query(EconYouGovCrosstab, EconYouGovReport)
+        .join(EconYouGovReport, EconYouGovCrosstab.report_id == EconYouGovReport.id)
+        .all()
+    )
+    # group by key, track count + most-recent topline
+    agg: dict[str, dict] = {}
+    for ct, rep in rows:
+        a = agg.setdefault(ct.question_key, {"count": 0, "latest": None, "latest_tl": None})
+        a["count"] += 1
+        end = rep.end_date
+        if a["latest"] is None or (end is not None and end > a["latest"]):
+            a["latest"] = end
+            a["latest_tl"] = ct.topline
+
+    out = [
+        QuestionOut(
+            key=key,
+            label=QUESTION_LABELS.get(key, key),
+            report_count=a["count"],
+            latest_net=_net_from_topline(a["latest_tl"]),
+        )
+        for key, a in agg.items()
+    ]
+    order = {k: i for i, k in enumerate(QUESTION_ORDER)}
+    out.sort(key=lambda q: order.get(q.key, 999))
+    return out
+
+
 # ── Approval / topline time series ────────────────────────────────────────────
 
 class TrendPoint(BaseModel):
@@ -71,13 +123,10 @@ def get_trend(question_key: str, db: Session = Depends(get_db)):
     )
     out = []
     for ct, rep in rows:
-        tl = ct.topline or {}
-        net = None
-        if "Approve" in tl and "Disapprove" in tl:
-            net = tl["Approve"] - tl["Disapprove"]
         out.append(TrendPoint(
             report_id=rep.id, end_date=rep.end_date,
-            sample_size=rep.sample_size, topline=tl, net=net,
+            sample_size=rep.sample_size, topline=ct.topline or {},
+            net=_net_from_topline(ct.topline),
         ))
     return out
 
@@ -88,6 +137,7 @@ class CrosstabOut(BaseModel):
     report_id: int
     end_date: Optional[date]
     sample_size: Optional[int]
+    source_url: Optional[str]
     question_key: str
     question_code: Optional[str]
     question_title: Optional[str]
@@ -116,6 +166,7 @@ def get_crosstab(question_key: str, report_id: Optional[int] = None,
     ct, rep = row
     return CrosstabOut(
         report_id=rep.id, end_date=rep.end_date, sample_size=rep.sample_size,
+        source_url=rep.source_url,
         question_key=ct.question_key, question_code=ct.question_code,
         question_title=ct.question_title, question_text=ct.question_text,
         blocks=ct.blocks,

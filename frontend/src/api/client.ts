@@ -505,6 +505,24 @@ export function useGenericBallot() {
 
 // ── Economist/YouGov crosstabs ────────────────────────────────────────────────
 
+export interface EconQuestion {
+  key: string;
+  label: string;
+  report_count: number;
+  latest_net: number | null;
+}
+
+export function useEconQuestions() {
+  const [questions, setQuestions] = useState<EconQuestion[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    get<EconQuestion[]>("/api/economist/questions")
+      .then(d => { setQuestions(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+  return { questions, loading };
+}
+
 export interface EconTrendPoint {
   report_id: number;
   end_date: string | null;
@@ -524,6 +542,7 @@ export interface EconCrosstab {
   report_id: number;
   end_date: string | null;
   sample_size: number | null;
+  source_url: string | null;
   question_key: string;
   question_code: string | null;
   question_title: string | null;

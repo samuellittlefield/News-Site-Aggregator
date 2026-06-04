@@ -35,14 +35,33 @@ PDF_LINK_RE = re.compile(r"https://d3nkl3psvxxpe9\.cloudfront\.net/documents/\S+
 
 # Recurring tables we track. key -> list of normalized title substrings to match.
 # Titles in the PDF have spaces stripped ("PresidentTrumpJobApproval"), so we
-# match against a space-stripped, lowercased version of the heading.
+# match against a space-stripped, lowercased version of the heading (see
+# _norm_title, which also drops punctuation).
 TRACKED_QUESTIONS: dict[str, list[str]] = {
-    "trump_approval": ["presidenttrumpjobapproval"],
+    "trump_approval":       ["presidenttrumpjobapproval"],
     "direction_of_country": ["directionofcountry"],
-    "economy": ["economyjobapproval", "trumpeconomyjobapproval"],
-    "immigration": ["immigrationjobapproval", "trumpimmigrationjobapproval"],
-    "inflation": ["inflationjobapproval", "trumpinflationjobapproval"],
+    "issue_economy":        ["jobsandtheeconomy"],
+    "issue_inflation":      ["inflationprices"],
+    "issue_immigration":    ["issueapprovalimmigration"],   # avoid SupportDetainingImmigrants etc.
+    "vance_approval":       ["jdvancejobapproval", "vancejobapproval"],
+    "congress_approval":    ["approvalofuscongress"],
+    "scotus_approval":      ["supremecourtoftheunitedstates"],
 }
+
+# Human-readable labels — single source of truth, exposed via /api/economist/questions.
+QUESTION_LABELS: dict[str, str] = {
+    "trump_approval":       "President Trump Job Approval",
+    "direction_of_country": "Direction of Country",
+    "issue_economy":        "Issue: Jobs & the Economy",
+    "issue_inflation":      "Issue: Inflation / Prices",
+    "issue_immigration":    "Issue: Immigration",
+    "vance_approval":       "JD Vance Job Approval",
+    "congress_approval":    "U.S. Congress Approval",
+    "scotus_approval":      "Supreme Court Approval",
+}
+
+# Display ordering for the frontend switcher (Core questions first).
+QUESTION_ORDER: list[str] = list(QUESTION_LABELS.keys())
 
 PCT_RE = re.compile(r"-?\d+%")
 HEADING_RE = re.compile(r"^(\d+[A-Z]?)\.\s*(\S.*)$")
