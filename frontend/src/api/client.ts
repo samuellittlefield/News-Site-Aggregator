@@ -503,6 +503,77 @@ export function useGenericBallot() {
   return { ballot, loading };
 }
 
+// ── Economist/YouGov crosstabs ────────────────────────────────────────────────
+
+export interface EconQuestion {
+  key: string;
+  label: string;
+  report_count: number;
+  latest_net: number | null;
+}
+
+export function useEconQuestions() {
+  const [questions, setQuestions] = useState<EconQuestion[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    get<EconQuestion[]>("/api/economist/questions")
+      .then(d => { setQuestions(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+  return { questions, loading };
+}
+
+export interface EconTrendPoint {
+  report_id: number;
+  end_date: string | null;
+  sample_size: number | null;
+  topline: Record<string, number>;
+  net: number | null;
+}
+
+export interface EconBlock {
+  group_line: string;
+  columns: string[];
+  rows: Record<string, number[]>;
+  ns: Record<string, number>;
+}
+
+export interface EconCrosstab {
+  report_id: number;
+  end_date: string | null;
+  sample_size: number | null;
+  source_url: string | null;
+  question_key: string;
+  question_code: string | null;
+  question_title: string | null;
+  question_text: string | null;
+  blocks: EconBlock[];
+}
+
+export function useEconTrend(questionKey: string) {
+  const [points, setPoints] = useState<EconTrendPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    setLoading(true);
+    get<EconTrendPoint[]>(`/api/economist/trend/${questionKey}`)
+      .then(d => { setPoints(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [questionKey]);
+  return { points, loading };
+}
+
+export function useEconCrosstab(questionKey: string) {
+  const [crosstab, setCrosstab] = useState<EconCrosstab | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    setLoading(true);
+    get<EconCrosstab>(`/api/economist/crosstab/${questionKey}`)
+      .then(d => { setCrosstab(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [questionKey]);
+  return { crosstab, loading };
+}
+
 export interface IssueTaxonomyItem {
   code: string;
   label: string;

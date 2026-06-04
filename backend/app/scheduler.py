@@ -25,6 +25,7 @@ from app.services import nws_alerts as nws_alerts_service
 from app.services import house_polls as house_polls_service
 from app.services import fec_candidates as fec_candidates_service
 from app.services import issue_tagger as issue_tagger_service
+from app.services import economist_yougov as economist_yougov_service
 
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
@@ -174,6 +175,19 @@ async def refresh_house_polls():
         db.close()
 
 
+async def refresh_economist():
+    logger.info("Refreshing Economist/YouGov crosstabs...")
+    db = SessionLocal()
+    try:
+        result = await economist_yougov_service.refresh_economist_yougov(db)
+        logger.info("Econ/YouGov refresh complete — %d new reports, %d questions",
+                    result.get("new_reports", 0), result.get("questions", 0))
+    except Exception as e:
+        logger.exception("Econ/YouGov refresh failed: %s", e)
+    finally:
+        db.close()
+
+
 async def refresh_breakout():
     logger.info("Starting pytrends breakout refresh...")
     db = SessionLocal()
@@ -245,6 +259,12 @@ def start_scheduler(interval_hours: int = 1):
         run_issue_tagger,
         IntervalTrigger(days=7),
         id="issue_tagger_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_economist,
+        IntervalTrigger(hours=12),
+        id="economist_job",
         replace_existing=True,
     )
     scheduler.start()

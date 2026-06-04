@@ -229,6 +229,40 @@ class CompetitiveDistrict(Base):
     incumbent_party = Column(String(1), nullable=True)  # D / R / O (open)
 
 
+class EconYouGovReport(Base):
+    __tablename__ = "econ_yougov_reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    source_url = Column(String, nullable=False, unique=True)   # cloudfront PDF link
+    title = Column(String, nullable=True)                       # "The Economist/YouGov Poll"
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+    sample_size = Column(Integer, nullable=True)
+    sample_desc = Column(String, nullable=True)                 # "U.S. Adult Citizens"
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    crosstabs = relationship(
+        "EconYouGovCrosstab", back_populates="report", cascade="all, delete-orphan",
+    )
+
+
+class EconYouGovCrosstab(Base):
+    __tablename__ = "econ_yougov_crosstabs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(Integer, ForeignKey("econ_yougov_reports.id", ondelete="CASCADE"), nullable=False)
+    question_code = Column(String, nullable=True)       # "23"
+    question_key = Column(String, nullable=False)       # stable slug we track, e.g. "trump_approval"
+    question_title = Column(String, nullable=True)      # "President Trump Job Approval"
+    question_text = Column(Text, nullable=True)         # the prompt wording
+    # blocks: [ {group_line, columns:[str], rows:{label:[int]}, ns:{col:int}} ]
+    blocks = Column(JSONB, default=list, nullable=False)
+    # topline: {label: total_pct} from the Total column (convenience for charting)
+    topline = Column(JSONB, default=dict, nullable=False)
+
+    report = relationship("EconYouGovReport", back_populates="crosstabs")
+
+
 class NWSAlert(Base):
     __tablename__ = "nws_alerts"
 
