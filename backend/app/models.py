@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text, Date, Float
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text, Date, Float, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, declarative_base
 
@@ -261,6 +261,79 @@ class EconYouGovCrosstab(Base):
     topline = Column(JSONB, default=dict, nullable=False)
 
     report = relationship("EconYouGovReport", back_populates="crosstabs")
+
+
+class VoteHubPoll(Base):
+    __tablename__ = "votehub_polls"
+
+    id = Column(Integer, primary_key=True, index=True)
+    votehub_id = Column(String, nullable=False, unique=True)
+    poll_type = Column(String, nullable=False, index=True)   # approval | generic-ballot | favorability
+    subject = Column(String, nullable=True)                  # e.g. "Donald Trump", "2026"
+    pollster = Column(String, nullable=True)
+    sponsors = Column(JSONB, default=list, nullable=False)
+    start_date = Column(DateTime(timezone=True), nullable=True)
+    end_date = Column(DateTime(timezone=True), nullable=True)
+    sample_size = Column(Integer, nullable=True)
+    population = Column(String(4), nullable=True)            # lv/rv/a
+    answers = Column(JSONB, default=list, nullable=False)    # raw [{choice, pct}]
+    approve = Column(Float, nullable=True)
+    disapprove = Column(Float, nullable=True)
+    dem = Column(Float, nullable=True)
+    rep = Column(Float, nullable=True)
+    url = Column(String, nullable=True)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class Earthquake(Base):
+    __tablename__ = "earthquakes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    usgs_id = Column(String, nullable=False, unique=True)
+    magnitude = Column(Float, nullable=True)
+    place = Column(String, nullable=True)
+    time = Column(DateTime(timezone=True), nullable=True)
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
+    depth_km = Column(Float, nullable=True)
+    alert_level = Column(String, nullable=True)   # PAGER: green/yellow/orange/red
+    tsunami = Column(Boolean, default=False, nullable=False)
+    felt = Column(Integer, nullable=True)
+    url = Column(String, nullable=True)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class PredictionMarket(Base):
+    __tablename__ = "prediction_markets"
+    __table_args__ = (UniqueConstraint("platform", "market_id", name="uq_market_platform_id"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    platform = Column(String, nullable=False, default="polymarket")
+    market_id = Column(String, nullable=False)
+    question = Column(String, nullable=False)
+    slug = Column(String, nullable=True)
+    url = Column(String, nullable=True)
+    event_title = Column(String, nullable=True)
+    outcomes = Column(JSONB, default=list, nullable=False)   # [{name, price}]
+    yes_price = Column(Float, nullable=True)                 # 0–1 for binary markets
+    volume_24h = Column(Float, nullable=True)
+    liquidity = Column(Float, nullable=True)
+    end_date = Column(DateTime(timezone=True), nullable=True)
+    active = Column(Boolean, default=True, nullable=False)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    snapshots = relationship("MarketSnapshot", back_populates="market", cascade="all, delete-orphan")
+
+
+class MarketSnapshot(Base):
+    __tablename__ = "market_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    market_id = Column(Integer, ForeignKey("prediction_markets.id", ondelete="CASCADE"), nullable=False)
+    yes_price = Column(Float, nullable=True)
+    captured_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    market = relationship("PredictionMarket", back_populates="snapshots")
 
 
 class NWSAlert(Base):

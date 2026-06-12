@@ -26,6 +26,10 @@ from app.services import house_polls as house_polls_service
 from app.services import fec_candidates as fec_candidates_service
 from app.services import issue_tagger as issue_tagger_service
 from app.services import economist_yougov as economist_yougov_service
+from app.services import votehub as votehub_service
+from app.services import earthquakes as earthquakes_service
+from app.services import faa_status as faa_status_service
+from app.services import prediction_markets as prediction_markets_service
 
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
@@ -188,6 +192,51 @@ async def refresh_economist():
         db.close()
 
 
+async def refresh_votehub():
+    logger.info("Refreshing VoteHub polls...")
+    db = SessionLocal()
+    try:
+        counts = await votehub_service.fetch_votehub_polls(db)
+        logger.info("VoteHub refresh complete — %s", counts)
+    except Exception as e:
+        logger.exception("VoteHub refresh failed: %s", e)
+    finally:
+        db.close()
+
+
+async def refresh_earthquakes():
+    logger.info("Refreshing USGS earthquakes...")
+    db = SessionLocal()
+    try:
+        count = await earthquakes_service.fetch_earthquakes(db)
+        logger.info("Earthquake refresh complete — %d quakes", count)
+    except Exception as e:
+        logger.exception("Earthquake refresh failed: %s", e)
+    finally:
+        db.close()
+
+
+async def refresh_faa():
+    logger.info("Refreshing FAA airspace status...")
+    try:
+        events = await faa_status_service.fetch_faa_status()
+        logger.info("FAA refresh complete — %d events", len(events))
+    except Exception as e:
+        logger.exception("FAA refresh failed: %s", e)
+
+
+async def refresh_markets():
+    logger.info("Refreshing prediction markets...")
+    db = SessionLocal()
+    try:
+        count = await prediction_markets_service.fetch_polymarket(db)
+        logger.info("Markets refresh complete — %d markets", count)
+    except Exception as e:
+        logger.exception("Markets refresh failed: %s", e)
+    finally:
+        db.close()
+
+
 async def refresh_breakout():
     logger.info("Starting pytrends breakout refresh...")
     db = SessionLocal()
@@ -221,7 +270,7 @@ def start_scheduler(interval_hours: int = 1):
     )
     scheduler.add_job(
         refresh_news,
-        IntervalTrigger(hours=1),
+        IntervalTrigger(minutes=30),
         id="news_job",
         replace_existing=True,
     )
@@ -265,6 +314,30 @@ def start_scheduler(interval_hours: int = 1):
         refresh_economist,
         IntervalTrigger(hours=12),
         id="economist_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_votehub,
+        IntervalTrigger(hours=1),
+        id="votehub_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_earthquakes,
+        IntervalTrigger(minutes=5),
+        id="earthquakes_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_faa,
+        IntervalTrigger(minutes=10),
+        id="faa_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_markets,
+        IntervalTrigger(minutes=10),
+        id="markets_job",
         replace_existing=True,
     )
     scheduler.start()

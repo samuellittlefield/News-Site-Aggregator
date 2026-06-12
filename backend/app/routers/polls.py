@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import CompetitiveDistrict, HousePoll
 from app.services.house_polls import fetch_generic_ballot
+from app.services.votehub import compute_average as compute_votehub_average
 
 router = APIRouter(prefix="/api/polls", tags=["polls"])
 
@@ -180,4 +181,12 @@ class GenericBallotOut(BaseModel):
 @router.get("/generic-ballot", response_model=List[GenericBallotOut])
 async def get_generic_ballot(db: Session = Depends(get_db)):
     rows = await fetch_generic_ballot(db)
-    return [GenericBallotOut(**r) for r in rows if r.get("rep") and r.get("dem")]
+    results = [GenericBallotOut(**r) for r in rows if r.get("rep") and r.get("dem")]
+    votehub_avg = compute_votehub_average(db, "generic-ballot")
+    if votehub_avg:
+        results.append(GenericBallotOut(
+            source="VoteHub (live average)",
+            dem=votehub_avg["dem"],
+            rep=votehub_avg["rep"],
+        ))
+    return results

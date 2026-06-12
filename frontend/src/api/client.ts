@@ -694,3 +694,179 @@ export async function addManualTag(
 export async function triggerRefresh(): Promise<void> {
   await fetch("/api/refresh", { method: "POST" });
 }
+
+// ── VoteHub polls ─────────────────────────────────────────────────────────────
+
+export interface VoteHubPoll {
+  id: number;
+  votehub_id: string;
+  poll_type: string;
+  subject: string | null;
+  pollster: string | null;
+  sponsors: string[];
+  start_date: string | null;
+  end_date: string | null;
+  sample_size: number | null;
+  population: string | null;
+  approve: number | null;
+  disapprove: number | null;
+  dem: number | null;
+  rep: number | null;
+  url: string | null;
+  fetched_at: string;
+}
+
+export interface ApprovalAverage {
+  approve: number;
+  disapprove: number;
+  net: number;
+  n_polls: number;
+  window_days: number;
+}
+
+export interface GenericBallotAverage {
+  dem: number;
+  rep: number;
+  margin: number;
+  n_polls: number;
+  window_days: number;
+}
+
+export interface VoteHubApprovalSet {
+  average: ApprovalAverage | null;
+  polls: VoteHubPoll[];
+}
+
+export interface VoteHubGenericSet {
+  average: GenericBallotAverage | null;
+  polls: VoteHubPoll[];
+}
+
+export function useVoteHubApproval() {
+  const [data, setData] = useState<VoteHubApprovalSet | null>(null);
+  const [loading, setLoading] = useState(true);
+  const load = () => {
+    get<VoteHubApprovalSet>("/api/votehub/approval")
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+  useEffect(() => { load(); const id = setInterval(load, 10 * 60 * 1000); return () => clearInterval(id); }, []);
+  return { data, loading };
+}
+
+export function useVoteHubGenericBallot() {
+  const [data, setData] = useState<VoteHubGenericSet | null>(null);
+  const [loading, setLoading] = useState(true);
+  const load = () => {
+    get<VoteHubGenericSet>("/api/votehub/generic-ballot")
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+  useEffect(() => { load(); const id = setInterval(load, 10 * 60 * 1000); return () => clearInterval(id); }, []);
+  return { data, loading };
+}
+
+// ── Prediction markets ────────────────────────────────────────────────────────
+
+export interface Market {
+  id: number;
+  platform: string;
+  market_id: string;
+  question: string;
+  slug: string | null;
+  url: string | null;
+  event_title: string | null;
+  outcomes: { name: string; price: number }[];
+  yes_price: number | null;
+  volume_24h: number | null;
+  liquidity: number | null;
+  end_date: string | null;
+  fetched_at: string;
+}
+
+export interface MarketSnapshotPoint {
+  yes_price: number | null;
+  captured_at: string;
+}
+
+export function useMarkets(limit = 30) {
+  const [markets, setMarkets] = useState<Market[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = () => {
+    get<Market[]>(`/api/markets?limit=${limit}`)
+      .then(d => { setMarkets(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+  useEffect(() => { load(); const id = setInterval(load, 2 * 60 * 1000); return () => clearInterval(id); }, [limit]);
+  return { markets, loading };
+}
+
+export function useMarketHistory(marketId: number, days = 14) {
+  const [history, setHistory] = useState<MarketSnapshotPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    get<MarketSnapshotPoint[]>(`/api/markets/${marketId}/history?days=${days}`)
+      .then(d => { setHistory(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [marketId, days]);
+  return { history, loading };
+}
+
+// ── Hazards: earthquakes + FAA ────────────────────────────────────────────────
+
+export interface Earthquake {
+  id: number;
+  usgs_id: string;
+  magnitude: number | null;
+  place: string | null;
+  time: string | null;
+  lat: number | null;
+  lng: number | null;
+  depth_km: number | null;
+  alert_level: string | null;
+  tsunami: boolean;
+  felt: number | null;
+  url: string | null;
+}
+
+export interface EarthquakeSet {
+  summary: { count: number; max_magnitude: number | null; significant: Earthquake | null };
+  earthquakes: Earthquake[];
+}
+
+export interface FaaEvent {
+  airport: string;
+  type: string;
+  reason: string | null;
+  avg_delay: string | null;
+  end_time: string | null;
+}
+
+export interface FaaStatus {
+  events: FaaEvent[];
+  fetched_at: string | null;
+}
+
+export function useEarthquakes(minMag = 2.5, hours = 24) {
+  const [data, setData] = useState<EarthquakeSet | null>(null);
+  const [loading, setLoading] = useState(true);
+  const load = () => {
+    get<EarthquakeSet>(`/api/hazards/earthquakes?min_mag=${minMag}&hours=${hours}`)
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+  useEffect(() => { load(); const id = setInterval(load, 5 * 60 * 1000); return () => clearInterval(id); }, [minMag, hours]);
+  return { data, loading };
+}
+
+export function useFaaStatus() {
+  const [data, setData] = useState<FaaStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const load = () => {
+    get<FaaStatus>("/api/hazards/faa")
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+  useEffect(() => { load(); const id = setInterval(load, 5 * 60 * 1000); return () => clearInterval(id); }, []);
+  return { data, loading };
+}

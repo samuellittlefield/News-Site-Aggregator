@@ -8,7 +8,8 @@ Two data streams:
 Also seeds the CompetitiveDistrict table with Cook Political Report 2026 ratings,
 2024 actual results, and district centroids on first run.
 
-Pollster grades loaded from FiveThirtyEight's public pollster-ratings CSV on GitHub.
+Pollster grades loaded from the vendored FiveThirtyEight pollster-ratings CSV
+(frozen at 2025-02-25 — 538's live feeds are dead), with the GitHub archive as fallback.
 """
 import csv
 import hashlib
@@ -16,6 +17,7 @@ import io
 import logging
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 import httpx
@@ -106,6 +108,7 @@ _POLLSTER_GRADES: dict[str, str] = {}
 _GRADES_LOADED = False
 
 GRADE_URL = "https://raw.githubusercontent.com/fivethirtyeight/data/master/pollster-ratings/pollster-ratings-combined.csv"
+GRADE_CSV_PATH = Path(__file__).resolve().parent.parent / "data" / "pollster_ratings.csv"
 
 NUMERIC_TO_LETTER = {
     3.0: "A+", 2.9: "A+", 2.8: "A", 2.7: "A", 2.6: "A-",
@@ -120,26 +123,38 @@ def _numeric_to_letter(score: float) -> str:
     return NUMERIC_TO_LETTER.get(rounded, "C")
 
 
+def _parse_grades_csv(text: str) -> int:
+    reader = csv.DictReader(io.StringIO(text))
+    count = 0
+    for row in reader:
+        name = row.get("pollster", "").strip()
+        score_str = row.get("numeric_grade", "")
+        if name and score_str:
+            try:
+                _POLLSTER_GRADES[name.lower()] = _numeric_to_letter(float(score_str))
+                count += 1
+            except ValueError:
+                pass
+    return count
+
+
 async def _load_pollster_grades() -> None:
     global _GRADES_LOADED
     if _GRADES_LOADED:
         return
     try:
+        if GRADE_CSV_PATH.exists():
+            _parse_grades_csv(GRADE_CSV_PATH.read_text())
+            _GRADES_LOADED = True
+            logger.info("Pollster grades loaded from vendored CSV: %d entries", len(_POLLSTER_GRADES))
+            return
         async with httpx.AsyncClient(headers=HEADERS, timeout=10.0) as client:
             resp = await client.get(GRADE_URL)
         if resp.status_code != 200:
             return
-        reader = csv.DictReader(io.StringIO(resp.text))
-        for row in reader:
-            name = row.get("pollster", "").strip()
-            score_str = row.get("numeric_grade", "")
-            if name and score_str:
-                try:
-                    _POLLSTER_GRADES[name.lower()] = _numeric_to_letter(float(score_str))
-                except ValueError:
-                    pass
+        _parse_grades_csv(resp.text)
         _GRADES_LOADED = True
-        logger.info("Pollster grades loaded: %d entries", len(_POLLSTER_GRADES))
+        logger.info("Pollster grades loaded from GitHub fallback: %d entries", len(_POLLSTER_GRADES))
     except Exception as e:
         logger.warning("Could not load pollster grades: %s", e)
 

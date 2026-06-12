@@ -3,6 +3,8 @@ import { ApprovalSection } from "../components/ApprovalSection";
 import { DistrictMap } from "../components/DistrictMap";
 import { GenericBallotBar } from "../components/GenericBallotBar";
 import { PollCarousel } from "../components/PollCarousel";
+import { RecentPollsList } from "../components/RecentPollsList";
+import { VoteHubApprovalCard } from "../components/VoteHubApprovalCard";
 
 export function PollsPage() {
   const { polls, loading: pollsLoading } = useHousePolls();
@@ -27,7 +29,8 @@ export function PollsPage() {
         {/* Generic ballot headline */}
         {!ballotLoading && <GenericBallotBar ballot={ballot} />}
 
-        {/* Presidential approval (Economist/YouGov) */}
+        {/* Presidential approval — VoteHub live average + Economist/YouGov crosstabs */}
+        <VoteHubApprovalCard />
         <ApprovalSection />
 
         {/* 3D district map */}
@@ -54,6 +57,9 @@ export function PollsPage() {
             <PollCarousel polls={polls} ballot={ballot} />
           )}
         </div>
+
+        {/* National polls from VoteHub */}
+        <RecentPollsList />
 
       </div>
     </div>

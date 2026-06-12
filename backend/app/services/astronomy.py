@@ -102,8 +102,10 @@ def get_sky_tonight() -> dict:
     # Next full and new moon
     next_full = ephem.next_full_moon(obs.date)
     next_new = ephem.next_new_moon(obs.date)
-    next_full_dt = next_full.datetime()
-    next_new_dt = next_new.datetime()
+    # ephem returns naive UTC datetimes; make them aware so they can be
+    # compared with `now`
+    next_full_dt = next_full.datetime().replace(tzinfo=timezone.utc)
+    next_new_dt = next_new.datetime().replace(tzinfo=timezone.utc)
 
     # Is next full moon a blue moon?
     is_blue = _is_blue_moon(next_full_dt)
