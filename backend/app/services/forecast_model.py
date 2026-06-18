@@ -112,7 +112,7 @@ def _summary(dem_seats: np.ndarray, threshold: int, swing: float,
         "n_sims": int(dem_seats.size),
         "swing_d": round(swing, 1),
         "params": {"tau": tau, "delta": delta, "incumbency_adv": inc},
-        "note": "experimental — uncalibrated",
+        "note": "experimental",
     }
 
 

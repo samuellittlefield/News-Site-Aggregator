@@ -50,6 +50,8 @@ INCUMBENCY_ADV = 0.0      # 0: both priors now blend in the last same-office res
                           # would double-count it.
 TAU = 3.5                 # national-error SD, shared across seats in a sim (correlation)
 DELTA_HOUSE = 5.5         # per-district idiosyncratic SD (backtested, blended prior, 2024)
-DELTA_SENATE = 7.0        # per-seat idiosyncratic SD (judgment; not yet backtested)
+DELTA_SENATE = 10.0       # per-seat idiosyncratic SD (backtested on 133 Senate races
+                          # 2018–24: competitive seats scatter ~11 pts — Senate is far
+                          # more candidate-driven than the House, was overconfident at 7)
 
 N_SIMS = 20000

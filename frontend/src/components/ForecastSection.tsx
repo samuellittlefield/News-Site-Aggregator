@@ -100,7 +100,7 @@ function ChamberCard({ chamber, model, tuned }: { chamber: ChamberForecast; mode
           </div>
           <p className="text-[9px] text-gray-600 mt-0.5">
             median {model.median_dem_seats} D seats (90% range {model.p10_dem_seats}–{model.p90_dem_seats})
-            {" · "}{model.n_sims.toLocaleString()} sims · {tuned ? "tuned knobs" : "uncalibrated"}
+            {" · "}{model.n_sims.toLocaleString()} sims · {tuned ? "tuned knobs" : "backtested δ"}
           </p>
         </div>
       )}
@@ -141,8 +141,8 @@ function ModelBasis({ chambers }: { chambers: ChamberForecast[] }) {
             <span className="text-gray-300">Uncertainty.</span> {m.n_sims.toLocaleString()} Monte-Carlo sims
             with a shared national error τ=<span className="font-mono">{m.tau}</span> plus per-seat noise
             δ (House <span className="font-mono">{delta(house)}</span>, Senate <span className="font-mono">{delta(senate)}</span>).
-            τ and House δ are <span className="text-gray-300">backtested on 2022–24 actual results</span>;
-            Senate δ is still a judgment value.
+            All three are <span className="text-gray-300">backtested on actual results</span> — House δ on
+            2024 districts, Senate δ on 133 races (2018–24), τ from historical generic-ballot error.
           </p>
           <p>
             <span className="text-gray-300">Model vs market.</span> House {vsMarket(house)! >= 0 ? "+" : ""}{vsMarket(house)} pts,
