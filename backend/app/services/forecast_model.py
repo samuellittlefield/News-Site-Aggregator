@@ -9,10 +9,11 @@ incumbency term nudges toward the sitting party; then each simulation draws a
 per-seat idiosyncratic noise. Counting wins across thousands of sims yields a
 control probability and a seat distribution.
 
-The House prior is the seat's 2024 presidential lean. The Senate prior blends the
-last same-seat result (2020, or 2022 for the FL/OH specials) with the 2024
-presidential lean — each detrended by its year's national baseline — so it carries
-incumbency strength (e.g. Maine's R lean despite the state voting Harris).
+Both chambers blend a last-same-office result with the 2024 presidential lean,
+each detrended by its year's national baseline, so the prior carries incumbency
+strength (e.g. Maine's R Senate lean despite the state voting Harris; House
+crossover seats held by the incumbent party). House = 2024 House result + 2024
+pres; Senate = last Senate result (2020, or 2022 for the FL/OH specials) + 2024 pres.
 
 DELIBERATELY UNCALIBRATED — the spread/adjustment/blend constants in
 `forecast_constants.py` are judgment values, not fit to history (that's the rest of
@@ -42,7 +43,8 @@ def _load_csv(name: str) -> list:
 
 
 # Static baselines loaded once at import (tiny, vendored).
-_HOUSE = _load_csv("house_2024_pres.csv")          # state, district, dem_margin, incumbent_party
+# House prior file blends 2024 presidential lean with the 2024 House result.
+_HOUSE = _load_csv("house_priors.csv")             # state, district, pres2024_margin, house2024_margin, incumbent_party
 _STATE_LEAN = {r["state"]: float(r["dem_margin"]) for r in _load_csv("state_pres_2024.csv")}
 _SENATE = _load_csv("senate_2026.csv")             # state, incumbent_party, is_special
 # Last same-seat Senate result margin (2020 for Class 2, 2022 for FL/OH specials).
@@ -63,6 +65,19 @@ def _current_env(db: Session) -> float:
     if gb and gb.get("margin") is not None:
         return gb["margin"]
     return C.NATIONAL_PRES_MARGIN_2024_D
+
+
+def _house_lean(row: dict) -> float:
+    """Blended partisan lean (vs nation) for a House seat: the 2024 House result
+    (embeds incumbency) and the 2024 presidential lean, each detrended by its
+    year's national baseline. Falls back to pure presidential lean for the
+    uncontested seats that have no two-party House margin."""
+    pres_lean = float(row["pres2024_margin"]) - C.NATIONAL_PRES_MARGIN_2024_D
+    if not row["house2024_margin"]:
+        return pres_lean
+    house_lean = float(row["house2024_margin"]) - C.NATIONAL_HOUSE_2024_D
+    w = C.HOUSE_PRIOR_BLEND
+    return w * house_lean + (1 - w) * pres_lean
 
 
 def _senate_lean(state: str, is_special: bool, blend: float) -> float:
@@ -116,8 +131,8 @@ def run_model(db: Session, n_sims: int = C.N_SIMS, seed: Optional[int] = None, *
     env = _current_env(db)                                  # nation now (Dem−Rep)
     swing = env - C.NATIONAL_PRES_MARGIN_2024_D             # vs 2024 pres, for display
 
-    # ── House: simulate all 435 seats (presidential lean + environment) ─────
-    h_lean = np.array([float(r["dem_margin"]) for r in _HOUSE]) - C.NATIONAL_PRES_MARGIN_2024_D
+    # ── House: simulate all 435 seats (blended lean + environment) ──────────
+    h_lean = np.array([_house_lean(r) for r in _HOUSE])
     h_inc = np.array([_inc_dir(r["incumbent_party"]) for r in _HOUSE])
     h_base = h_lean + env + inc * h_inc
     h_dem = _simulate(h_base, n_sims, tau, delta_house, rng)

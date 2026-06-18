@@ -24,6 +24,13 @@ NATIONAL_2022_D = -2.8
 # strength); the remainder is presidential lean. Experimental — tune in Phase F.
 SENATE_PRIOR_BLEND = 0.5
 
+# House seat prior = blend of the 2024 House result lean (embeds incumbency —
+# the backtest showed presidential-lean toss-ups went 82% to the incumbent
+# party) and the 2024 presidential lean. Falls back to pure presidential lean
+# for the ~42 uncontested seats with no two-party House margin.
+NATIONAL_HOUSE_2024_D = -2.6   # actual 2024 national House two-party margin
+HOUSE_PRIOR_BLEND = 0.5
+
 # Current Senate composition going into 2026 (independents counted with Dems).
 CURRENT_SENATE = {"D": 47, "R": 53}
 
@@ -32,15 +39,17 @@ CURRENT_SENATE = {"D": 47, "R": 53}
 HOUSE_MAJORITY = 218
 SENATE_DEM_CONTROL = 51
 
-# Fundamentals / uncertainty knobs (points).
-# TAU and DELTA_HOUSE are backtest-informed (scripts/backtest.py, 2022+2024,
-# current maps): generic-ballot historical error ≈ 3–4 pts → τ≈3.5; competitive
-# House seats scatter ≈ 7 pts around lean+environment → δ_house≈7 (model at 5 was
-# overconfident). DELTA_SENATE / INCUMBENCY_ADV are still judgment values pending
-# a Senate / multi-cycle (2018–2020) backtest panel.
-INCUMBENCY_ADV = 3.0      # margin shift toward the incumbent party
+# Fundamentals / uncertainty knobs (points), backtest-informed where noted
+# (scripts/backtest.py). τ≈3.5 from the historical generic-ballot error (~3–4 pts).
+# δ_house≈5.5: with the blended (incumbency-aware) House prior, 2024 seats scatter
+# ~5.4 pts around the prediction — lower than the ~7 the pres-only prior implied,
+# because that prior's incumbency-blindness was showing up as noise.
+# DELTA_SENATE is still a judgment value (no Senate backtest panel yet).
+INCUMBENCY_ADV = 0.0      # 0: both priors now blend in the last same-office result,
+                          # which already embeds incumbency — a separate flat term
+                          # would double-count it.
 TAU = 3.5                 # national-error SD, shared across seats in a sim (correlation)
-DELTA_HOUSE = 7.0         # per-district idiosyncratic SD (backtested 2022+2024)
+DELTA_HOUSE = 5.5         # per-district idiosyncratic SD (backtested, blended prior, 2024)
 DELTA_SENATE = 7.0        # per-seat idiosyncratic SD (judgment; not yet backtested)
 
 N_SIMS = 20000

@@ -831,6 +831,9 @@ export interface ChamberModel {
   p90_dem_seats: number;
   n_sims: number;
   note: string;
+  swing_d: number;
+  tau: number;
+  delta: number;
 }
 
 export interface ChamberForecast {

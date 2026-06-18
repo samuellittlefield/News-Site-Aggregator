@@ -71,6 +71,9 @@ class ChamberModel(BaseModel):
     p90_dem_seats: int
     n_sims: int
     note: str
+    swing_d: float = 0.0   # current national environment vs 2024 pres baseline
+    tau: float = 0.0       # national-error SD
+    delta: float = 0.0     # per-seat idiosyncratic SD
 
 
 class ChamberForecast(BaseModel):
@@ -173,6 +176,9 @@ def _chamber_model(model_out: Optional[dict], chamber: str) -> Optional[ChamberM
         p90_dem_seats=block["p90_dem_seats"],
         n_sims=block["n_sims"],
         note=block["note"],
+        swing_d=block["swing_d"],
+        tau=block["params"]["tau"],
+        delta=block["params"]["delta"],
     )
 
 

@@ -108,6 +108,53 @@ function ChamberCard({ chamber, model, tuned }: { chamber: ChamberForecast; mode
   );
 }
 
+/** Reviewable "how the model works + calibration" disclosure. */
+function ModelBasis({ chambers }: { chambers: ChamberForecast[] }) {
+  const [open, setOpen] = useState(false);
+  const house = chambers.find(c => c.chamber === "house");
+  const senate = chambers.find(c => c.chamber === "senate");
+  const m = house?.model;
+  if (!m) return null;
+
+  const delta = (c?: ChamberForecast) => c?.model?.delta ?? null;
+  const vsMarket = (c?: ChamberForecast) =>
+    c?.model && c.dem_prob != null ? Math.round((c.model.dem_prob - c.dem_prob) * 100) : null;
+
+  return (
+    <div className="border-t border-gray-800 pt-3">
+      <button onClick={() => setOpen(o => !o)} className="text-[11px] text-amber-300/80 hover:text-amber-200">
+        {open ? "▾ Hide" : "▸ How the experimental model works"}
+      </button>
+      {open && (
+        <div className="mt-2 text-[11px] text-gray-400 leading-relaxed space-y-2 border border-gray-800 rounded-lg p-3">
+          <p>
+            <span className="text-gray-300">Inputs.</span> National environment = the live generic-ballot
+            average, currently a <span className="font-mono">{m.swing_d >= 0 ? "+" : ""}{m.swing_d}</span>-pt
+            swing vs the 2024 presidential baseline, applied to every seat.
+          </p>
+          <p>
+            <span className="text-gray-300">Priors.</span> Each seat blends its last same-office result
+            (House: 2024 · Senate: 2020, or 2022 for FL/OH) with the 2024 presidential lean — so the prior
+            carries incumbency, not just partisanship.
+          </p>
+          <p>
+            <span className="text-gray-300">Uncertainty.</span> {m.n_sims.toLocaleString()} Monte-Carlo sims
+            with a shared national error τ=<span className="font-mono">{m.tau}</span> plus per-seat noise
+            δ (House <span className="font-mono">{delta(house)}</span>, Senate <span className="font-mono">{delta(senate)}</span>).
+            τ and House δ are <span className="text-gray-300">backtested on 2022–24 actual results</span>;
+            Senate δ is still a judgment value.
+          </p>
+          <p>
+            <span className="text-gray-300">Model vs market.</span> House {vsMarket(house)! >= 0 ? "+" : ""}{vsMarket(house)} pts,
+            Senate {vsMarket(senate)! >= 0 ? "+" : ""}{vsMarket(senate)} pts (model D-prob minus market consensus).
+            A gap is an honest disagreement, not an error — the model trusts current fundamentals; the market prices in more.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ForecastSection() {
   const { forecast, loading } = useCongressForecast();
   const [tuning, setTuning] = useState(false);
@@ -179,6 +226,8 @@ export function ForecastSection() {
           ))}
         </div>
       )}
+
+      <ModelBasis chambers={forecast.chambers} />
     </div>
   );
 }
