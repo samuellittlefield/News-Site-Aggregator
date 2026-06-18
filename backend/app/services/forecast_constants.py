@@ -12,6 +12,18 @@ candidate for backtesting later.
 # leans, so this is the baseline the live generic ballot is swung against.
 NATIONAL_PRES_MARGIN_2024_D = -1.65
 
+# National baselines for the years the Senate prior results come from, used to
+# detrend each last-result margin into a "lean vs the nation that year" before
+# blending. 2020 = Biden's presidential popular-vote margin; 2022 = that year's
+# national House popular-vote margin (R+2.8).
+NATIONAL_PRES_2020_D = 4.5
+NATIONAL_2022_D = -2.8
+
+# Senate seat prior = blend of the last same-seat result lean and the 2024
+# presidential lean. Weight on the last-result lean (captures incumbency
+# strength); the remainder is presidential lean. Experimental — tune in Phase F.
+SENATE_PRIOR_BLEND = 0.5
+
 # Current Senate composition going into 2026 (independents counted with Dems).
 CURRENT_SENATE = {"D": 47, "R": 53}
 
