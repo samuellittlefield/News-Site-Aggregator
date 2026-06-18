@@ -32,10 +32,15 @@ CURRENT_SENATE = {"D": 47, "R": 53}
 HOUSE_MAJORITY = 218
 SENATE_DEM_CONTROL = 51
 
-# Fundamentals / uncertainty knobs (points, experimental — to be calibrated).
+# Fundamentals / uncertainty knobs (points).
+# TAU and DELTA_HOUSE are backtest-informed (scripts/backtest.py, 2022+2024,
+# current maps): generic-ballot historical error ≈ 3–4 pts → τ≈3.5; competitive
+# House seats scatter ≈ 7 pts around lean+environment → δ_house≈7 (model at 5 was
+# overconfident). DELTA_SENATE / INCUMBENCY_ADV are still judgment values pending
+# a Senate / multi-cycle (2018–2020) backtest panel.
 INCUMBENCY_ADV = 3.0      # margin shift toward the incumbent party
-TAU = 3.0                 # national-error SD, shared across seats in a sim (correlation)
-DELTA_HOUSE = 5.0         # per-district idiosyncratic SD
-DELTA_SENATE = 7.0        # per-seat idiosyncratic SD (Senate is more candidate-driven)
+TAU = 3.5                 # national-error SD, shared across seats in a sim (correlation)
+DELTA_HOUSE = 7.0         # per-district idiosyncratic SD (backtested 2022+2024)
+DELTA_SENATE = 7.0        # per-seat idiosyncratic SD (judgment; not yet backtested)
 
 N_SIMS = 20000
