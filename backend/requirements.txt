@@ -11,3 +11,4 @@ pytrends==4.9.2
 ephem==4.1.6
 feedparser==6.0.11
 pdfplumber==0.11.8
+numpy==2.0.2
