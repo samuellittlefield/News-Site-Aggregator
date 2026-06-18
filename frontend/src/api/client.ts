@@ -812,6 +812,60 @@ export function useMarketHistory(marketId: number, days = 14) {
   return { history, loading };
 }
 
+// ── Congress forecast (control-of-chamber markets + model link-outs) ──────────
+
+export interface ForecastSource {
+  platform: string;
+  dem_prob: number | null;
+  rep_prob: number | null;
+  url: string | null;
+  dem_market_id: number | null;
+  rep_market_id: number | null;
+}
+
+export interface ChamberModel {
+  dem_prob: number;
+  rep_prob: number;
+  median_dem_seats: number;
+  p10_dem_seats: number;
+  p90_dem_seats: number;
+  n_sims: number;
+  note: string;
+}
+
+export interface ChamberForecast {
+  chamber: string;
+  title: string;
+  dem_prob: number | null;
+  rep_prob: number | null;
+  sources: ForecastSource[];
+  model: ChamberModel | null;
+}
+
+export interface ForecastReference {
+  name: string;
+  publisher: string;
+  url: string;
+  note: string;
+}
+
+export interface CongressForecast {
+  chambers: ChamberForecast[];
+  references: ForecastReference[];
+}
+
+export function useCongressForecast() {
+  const [forecast, setForecast] = useState<CongressForecast | null>(null);
+  const [loading, setLoading] = useState(true);
+  const load = () => {
+    get<CongressForecast>("/api/forecasts/congress")
+      .then(d => { setForecast(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+  useEffect(() => { load(); const id = setInterval(load, 10 * 60 * 1000); return () => clearInterval(id); }, []);
+  return { forecast, loading };
+}
+
 // ── Hazards: earthquakes + FAA ────────────────────────────────────────────────
 
 export interface Earthquake {

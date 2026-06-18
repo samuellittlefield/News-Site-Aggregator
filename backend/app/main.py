@@ -20,7 +20,8 @@ from app.routers import economist as economist_router
 from app.routers import votehub as votehub_router
 from app.routers import hazards as hazards_router
 from app.routers import markets as markets_router
-from app.scheduler import refresh_all, refresh_breakout, refresh_candidates, refresh_climate, refresh_earthquakes, refresh_economist, refresh_extended_sources, refresh_faa, refresh_house_polls, refresh_markets, refresh_news, refresh_nws_alerts, refresh_status, refresh_votehub, refresh_weather, start_scheduler
+from app.routers import forecasts as forecasts_router
+from app.scheduler import refresh_all, refresh_breakout, refresh_candidates, refresh_climate, refresh_earthquakes, refresh_economist, refresh_extended_sources, refresh_faa, refresh_house_polls, refresh_kalshi, refresh_markets, refresh_news, refresh_nws_alerts, refresh_status, refresh_votehub, refresh_weather, start_scheduler
 from fastapi import BackgroundTasks
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
@@ -37,6 +38,7 @@ async def _startup_refresh():
     await refresh_earthquakes()
     await refresh_faa()
     await refresh_markets()
+    await refresh_kalshi()
     await refresh_all()
     await refresh_extended_sources()
     await refresh_news()
@@ -85,6 +87,7 @@ app.include_router(economist_router.router)
 app.include_router(votehub_router.router)
 app.include_router(hazards_router.router)
 app.include_router(markets_router.router)
+app.include_router(forecasts_router.router)
 
 
 async def _do_full_refresh():
@@ -100,6 +103,7 @@ async def _do_full_refresh():
     await refresh_earthquakes()
     await refresh_faa()
     await refresh_markets()
+    await refresh_kalshi()
 
 
 @app.post("/api/refresh", summary="Manually trigger a data refresh")

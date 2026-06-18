@@ -30,6 +30,7 @@ from app.services import votehub as votehub_service
 from app.services import earthquakes as earthquakes_service
 from app.services import faa_status as faa_status_service
 from app.services import prediction_markets as prediction_markets_service
+from app.services import kalshi as kalshi_service
 
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
@@ -237,6 +238,18 @@ async def refresh_markets():
         db.close()
 
 
+async def refresh_kalshi():
+    logger.info("Refreshing Kalshi control-of-Congress markets...")
+    db = SessionLocal()
+    try:
+        count = await kalshi_service.fetch_kalshi(db)
+        logger.info("Kalshi refresh complete — %d markets", count)
+    except Exception as e:
+        logger.exception("Kalshi refresh failed: %s", e)
+    finally:
+        db.close()
+
+
 async def refresh_breakout():
     logger.info("Starting pytrends breakout refresh...")
     db = SessionLocal()
@@ -338,6 +351,12 @@ def start_scheduler(interval_hours: int = 1):
         refresh_markets,
         IntervalTrigger(minutes=10),
         id="markets_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_kalshi,
+        IntervalTrigger(minutes=10),
+        id="kalshi_job",
         replace_existing=True,
     )
     scheduler.start()

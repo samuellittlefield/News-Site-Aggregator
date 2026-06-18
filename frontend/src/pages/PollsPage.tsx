@@ -1,9 +1,11 @@
 import { useGenericBallot, useHouseDistricts, useHousePolls } from "../api/client";
 import { ApprovalSection } from "../components/ApprovalSection";
 import { DistrictMap } from "../components/DistrictMap";
+import { ForecastSection } from "../components/ForecastSection";
 import { GenericBallotBar } from "../components/GenericBallotBar";
 import { PollCarousel } from "../components/PollCarousel";
 import { RecentPollsList } from "../components/RecentPollsList";
+import { SourcesDisclosure } from "../components/SourcesDisclosure";
 import { VoteHubApprovalCard } from "../components/VoteHubApprovalCard";
 
 export function PollsPage() {
@@ -25,6 +27,9 @@ export function PollsPage() {
             {polls.length > 0 ? `${polls.length} polls` : "Individual district polls loading as cycle progresses"}
           </p>
         </div>
+
+        {/* Control-of-Congress forecast (prediction markets + model link-outs) */}
+        <ForecastSection />
 
         {/* Generic ballot headline */}
         {!ballotLoading && <GenericBallotBar ballot={ballot} />}
@@ -60,6 +65,9 @@ export function PollsPage() {
 
         {/* National polls from VoteHub */}
         <RecentPollsList />
+
+        {/* Where all this data comes from */}
+        <SourcesDisclosure />
 
       </div>
     </div>
