@@ -866,6 +866,49 @@ export function useCongressForecast() {
   return { forecast, loading };
 }
 
+// ── Experimental model knobs (live tuning) ────────────────────────────────────
+
+export interface ModelKnobs {
+  tau: number;
+  delta_house: number;
+  delta_senate: number;
+  incumbency_adv: number;
+  senate_prior_blend: number;
+}
+
+export interface ModelSim {
+  house: ChamberModel;
+  senate: ChamberModel;
+  defaults: ModelKnobs;
+}
+
+export const MODEL_KNOB_META: { key: keyof ModelKnobs; label: string; min: number; max: number; step: number; help: string }[] = [
+  { key: "tau", label: "National error σ (τ)", min: 0, max: 10, step: 0.5, help: "Spread of the shared national swing — bigger = more correlated uncertainty across all seats." },
+  { key: "delta_house", label: "House seat noise (δ)", min: 0.5, max: 15, step: 0.5, help: "Per-district idiosyncratic noise." },
+  { key: "delta_senate", label: "Senate seat noise (δ)", min: 0.5, max: 15, step: 0.5, help: "Per-seat idiosyncratic noise — Senate is more candidate-driven." },
+  { key: "incumbency_adv", label: "Incumbency advantage", min: 0, max: 15, step: 0.5, help: "Margin nudge toward the party holding the seat." },
+  { key: "senate_prior_blend", label: "Senate prior blend", min: 0, max: 1, step: 0.05, help: "0 = pure 2024 presidential lean · 1 = pure last Senate result (more incumbency)." },
+];
+
+export function useModelSim(knobs: ModelKnobs | null) {
+  const [sim, setSim] = useState<ModelSim | null>(null);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!knobs) { setSim(null); return; }
+    setLoading(true);
+    const q = new URLSearchParams(
+      Object.fromEntries(Object.entries(knobs).map(([k, v]) => [k, String(v)])),
+    );
+    const t = setTimeout(() => {
+      get<ModelSim>(`/api/forecasts/model?${q}`)
+        .then(d => { setSim(d); setLoading(false); })
+        .catch(() => setLoading(false));
+    }, 200); // debounce slider drags
+    return () => clearTimeout(t);
+  }, [knobs]);
+  return { sim, loading };
+}
+
 // ── Hazards: earthquakes + FAA ────────────────────────────────────────────────
 
 export interface Earthquake {

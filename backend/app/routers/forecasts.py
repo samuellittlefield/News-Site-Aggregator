@@ -11,10 +11,11 @@ import logging
 import re
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.services import forecast_constants as MC
 from app.services.forecast_model import run_model
 
 logger = logging.getLogger(__name__)
@@ -202,3 +203,46 @@ def congress_forecast(db: Session = Depends(get_db)):
             )
         )
     return CongressForecastOut(chambers=chambers, references=REFERENCES)
+
+
+class ModelSimOut(BaseModel):
+    house: ChamberModel
+    senate: ChamberModel
+    defaults: dict
+
+
+def _clamp(v: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, v))
+
+
+@router.get("/model", response_model=ModelSimOut)
+def model_sim(
+    tau: float = Query(MC.TAU),
+    delta_house: float = Query(MC.DELTA_HOUSE),
+    delta_senate: float = Query(MC.DELTA_SENATE),
+    incumbency_adv: float = Query(MC.INCUMBENCY_ADV),
+    senate_prior_blend: float = Query(MC.SENATE_PRIOR_BLEND),
+    db: Session = Depends(get_db),
+):
+    """Re-run the experimental model with tunable knobs (for the live controls).
+    Params are clamped to sane ranges. Fixed seed so slider changes show the
+    *parameter* effect, not Monte-Carlo noise."""
+    out = run_model(
+        db, seed=2026,
+        tau=_clamp(tau, 0.0, 10.0),
+        delta_house=_clamp(delta_house, 0.5, 15.0),
+        delta_senate=_clamp(delta_senate, 0.5, 15.0),
+        incumbency_adv=_clamp(incumbency_adv, 0.0, 15.0),
+        senate_prior_blend=_clamp(senate_prior_blend, 0.0, 1.0),
+    )
+    return ModelSimOut(
+        house=_chamber_model(out, "house"),
+        senate=_chamber_model(out, "senate"),
+        defaults={
+            "tau": MC.TAU,
+            "delta_house": MC.DELTA_HOUSE,
+            "delta_senate": MC.DELTA_SENATE,
+            "incumbency_adv": MC.INCUMBENCY_ADV,
+            "senate_prior_blend": MC.SENATE_PRIOR_BLEND,
+        },
+    )

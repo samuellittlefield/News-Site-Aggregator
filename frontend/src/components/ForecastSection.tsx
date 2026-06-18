@@ -1,5 +1,14 @@
-import { ChamberForecast, useCongressForecast, useMarketHistory } from "../api/client";
+import { useState } from "react";
+import {
+  ChamberForecast, ChamberModel, ModelKnobs,
+  useCongressForecast, useMarketHistory, useModelSim,
+} from "../api/client";
 import { MiniSparkline } from "./dashboard/MiniSparkline";
+import { ModelControls } from "./ModelControls";
+
+const DEFAULT_KNOBS: ModelKnobs = {
+  tau: 3, delta_house: 5, delta_senate: 7, incumbency_adv: 3, senate_prior_blend: 0.5,
+};
 
 const PLATFORM_LABEL: Record<string, string> = {
   kalshi: "Kalshi",
@@ -19,7 +28,7 @@ function FavoredTrend({ marketId }: { marketId: number | null }) {
   return <MiniSparkline values={values} width={120} height={32} />;
 }
 
-function ChamberCard({ chamber }: { chamber: ChamberForecast }) {
+function ChamberCard({ chamber, model, tuned }: { chamber: ChamberForecast; model: ChamberModel | null; tuned: boolean }) {
   const dem = chamber.dem_prob;
   const rep = chamber.rep_prob;
   const demLeads = (dem ?? 0) >= (rep ?? 0);
@@ -76,22 +85,22 @@ function ChamberCard({ chamber }: { chamber: ChamberForecast }) {
       </div>
 
       {/* Our experimental in-house model — separate from the market consensus */}
-      {chamber.model && (
+      {model && (
         <div className="mt-2 border-t border-dashed border-amber-800/40 pt-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-amber-300/90 flex items-center gap-1.5">
               In-house model
               <span className="text-[8px] uppercase tracking-wide bg-amber-900/40 text-amber-400/90 px-1 py-0.5 rounded">
-                experimental
+                {tuned ? "tuned" : "experimental"}
               </span>
             </span>
             <span className="font-mono text-[11px] text-gray-400">
-              D {pct(chamber.model.dem_prob)} · R {pct(chamber.model.rep_prob)}
+              D {pct(model.dem_prob)} · R {pct(model.rep_prob)}
             </span>
           </div>
           <p className="text-[9px] text-gray-600 mt-0.5">
-            median {chamber.model.median_dem_seats} D seats (90% range {chamber.model.p10_dem_seats}–{chamber.model.p90_dem_seats})
-            {" · "}{chamber.model.n_sims.toLocaleString()} sims · uncalibrated
+            median {model.median_dem_seats} D seats (90% range {model.p10_dem_seats}–{model.p90_dem_seats})
+            {" · "}{model.n_sims.toLocaleString()} sims · {tuned ? "tuned knobs" : "uncalibrated"}
           </p>
         </div>
       )}
@@ -101,6 +110,9 @@ function ChamberCard({ chamber }: { chamber: ChamberForecast }) {
 
 export function ForecastSection() {
   const { forecast, loading } = useCongressForecast();
+  const [tuning, setTuning] = useState(false);
+  const [knobs, setKnobs] = useState<ModelKnobs>(DEFAULT_KNOBS);
+  const { sim, loading: simLoading } = useModelSim(tuning ? knobs : null);
 
   if (loading) {
     return <div className="h-40 bg-gray-900 rounded-xl animate-pulse" />;
@@ -109,17 +121,44 @@ export function ForecastSection() {
     return null;
   }
 
+  const dirty = (Object.keys(knobs) as (keyof ModelKnobs)[]).some(k => knobs[k] !== DEFAULT_KNOBS[k]);
+  // When tuning, use the freshly-simulated model blocks; otherwise the defaults from /congress.
+  const modelFor = (chamber: string): ChamberModel | null =>
+    tuning && sim ? (chamber === "house" ? sim.house : sim.senate) : null;
+
   return (
     <div className="space-y-3">
-      <div>
-        <p className="text-xs text-gray-600 uppercase tracking-wider">2026 Control of Congress — Forecast</p>
-        <p className="text-[10px] text-gray-700">
-          Market-implied probabilities · prediction markets refreshed every 10 minutes
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs text-gray-600 uppercase tracking-wider">2026 Control of Congress — Forecast</p>
+          <p className="text-[10px] text-gray-700">
+            Market-implied probabilities · prediction markets refreshed every 10 minutes
+          </p>
+        </div>
+        <button
+          onClick={() => setTuning(t => !t)}
+          className={`text-[10px] px-2 py-1 rounded border whitespace-nowrap ${
+            tuning ? "border-amber-700/60 text-amber-300/90 bg-amber-950/20" : "border-gray-800 text-gray-500 hover:text-gray-300"
+          }`}
+        >
+          ⚙ {tuning ? "Tuning model" : "Tune model"}
+        </button>
       </div>
 
+      {tuning && (
+        <ModelControls
+          knobs={knobs}
+          onChange={setKnobs}
+          onReset={() => setKnobs(DEFAULT_KNOBS)}
+          dirty={dirty}
+          loading={simLoading}
+        />
+      )}
+
       <div className="grid md:grid-cols-2 gap-3">
-        {forecast.chambers.map(c => <ChamberCard key={c.chamber} chamber={c} />)}
+        {forecast.chambers.map(c => (
+          <ChamberCard key={c.chamber} chamber={c} model={modelFor(c.chamber) ?? c.model} tuned={tuning && !!sim} />
+        ))}
       </div>
 
       {/* Model link-outs (cited, not ingested) */}
