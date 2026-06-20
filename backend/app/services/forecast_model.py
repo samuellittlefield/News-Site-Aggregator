@@ -23,12 +23,14 @@ into, not truth.
 """
 import csv
 import logging
+import math
 import os
 from typing import Optional
 
 import numpy as np
 from sqlalchemy.orm import Session
 
+from app.models import Candidate
 from app.services import forecast_constants as C
 from app.services.votehub import compute_average
 
@@ -91,6 +93,43 @@ def _senate_lean(state: str, is_special: bool, blend: float) -> float:
     return blend * last_lean + (1 - blend) * pres_lean
 
 
+def _fundraising_edges(db: Session, coef: float, cap: float):
+    """Per-seat margin nudge from FEC fundraising: coef·log10(bestDem$ / bestRep$),
+    capped. Returns (house_by_(state,district), senate_by_state). Only seats where
+    both parties have a funded candidate get a nudge (need a comparison)."""
+    if coef <= 0:
+        return {}, {}
+    house: dict = {}
+    senate: dict = {}
+
+    def best(store, key, party, amt):
+        d, r = store.get(key, (0.0, 0.0))
+        if party == "DEM":
+            d = max(d, amt)
+        elif party == "REP":
+            r = max(r, amt)
+        store[key] = (d, r)
+
+    rows = (
+        db.query(Candidate)
+        .filter(Candidate.fundraising_total != None, Candidate.fundraising_total > 0)  # noqa: E711
+        .all()
+    )
+    for c in rows:
+        if c.office == "S":
+            best(senate, c.state, c.party, c.fundraising_total)
+        elif c.office == "H" and c.district is not None:
+            best(house, (c.state, c.district), c.party, c.fundraising_total)
+
+    def edge(pair):
+        d, r = pair
+        if d <= 0 or r <= 0:
+            return 0.0
+        return max(-cap, min(cap, coef * (math.log10(d + 1) - math.log10(r + 1))))
+
+    return ({k: edge(v) for k, v in house.items()}, {k: edge(v) for k, v in senate.items()})
+
+
 def _simulate(base_margins: np.ndarray, n_sims: int, tau: float, delta: float,
               rng: np.random.Generator) -> np.ndarray:
     """Return per-sim count of Democratic seat wins for the given seats."""
@@ -101,7 +140,7 @@ def _simulate(base_margins: np.ndarray, n_sims: int, tau: float, delta: float,
 
 
 def _summary(dem_seats: np.ndarray, threshold: int, swing: float,
-             tau: float, delta: float, inc: float) -> dict:
+             tau: float, delta: float, inc: float, fund_coef: float) -> dict:
     p_dem = float((dem_seats >= threshold).mean())
     return {
         "dem_prob": round(p_dem, 4),
@@ -111,32 +150,41 @@ def _summary(dem_seats: np.ndarray, threshold: int, swing: float,
         "p90_dem_seats": int(np.percentile(dem_seats, 90)),
         "n_sims": int(dem_seats.size),
         "swing_d": round(swing, 1),
-        "params": {"tau": tau, "delta": delta, "incumbency_adv": inc},
+        "params": {"tau": tau, "delta": delta, "incumbency_adv": inc, "fundraising_coef": fund_coef},
         "note": "experimental",
     }
+
+
+def _house_fund_key(row: dict):
+    d = row["district"]
+    return (row["state"], int(d)) if d.isdigit() else None
 
 
 def run_model(db: Session, n_sims: int = C.N_SIMS, seed: Optional[int] = None, *,
               tau: Optional[float] = None, delta_house: Optional[float] = None,
               delta_senate: Optional[float] = None, incumbency_adv: Optional[float] = None,
-              senate_prior_blend: Optional[float] = None) -> dict:
+              senate_prior_blend: Optional[float] = None,
+              fundraising_coef: Optional[float] = None) -> dict:
     # Resolve overridable knobs (fall back to the judgment defaults).
     tau = C.TAU if tau is None else tau
     delta_house = C.DELTA_HOUSE if delta_house is None else delta_house
     delta_senate = C.DELTA_SENATE if delta_senate is None else delta_senate
     inc = C.INCUMBENCY_ADV if incumbency_adv is None else incumbency_adv
     blend = C.SENATE_PRIOR_BLEND if senate_prior_blend is None else senate_prior_blend
+    fund_coef = C.FUNDRAISING_COEF if fundraising_coef is None else fundraising_coef
 
     rng = np.random.default_rng(seed)
     env = _current_env(db)                                  # nation now (Dem−Rep)
     swing = env - C.NATIONAL_PRES_MARGIN_2024_D             # vs 2024 pres, for display
+    house_fund, senate_fund = _fundraising_edges(db, fund_coef, C.FUNDRAISING_CAP)
 
     # ── House: simulate all 435 seats (blended lean + environment) ──────────
     h_lean = np.array([_house_lean(r) for r in _HOUSE])
     h_inc = np.array([_inc_dir(r["incumbent_party"]) for r in _HOUSE])
-    h_base = h_lean + env + inc * h_inc
+    h_fund = np.array([house_fund.get(_house_fund_key(r), 0.0) for r in _HOUSE])
+    h_base = h_lean + env + inc * h_inc + h_fund
     h_dem = _simulate(h_base, n_sims, tau, delta_house, rng)
-    house = _summary(h_dem, C.HOUSE_MAJORITY, swing, tau, delta_house, inc)
+    house = _summary(h_dem, C.HOUSE_MAJORITY, swing, tau, delta_house, inc, fund_coef)
 
     # ── Senate: carry-over baseline + the seats up in 2026 ──────────────────
     # Seat prior blends last-same-seat result (incumbency) with presidential lean.
@@ -144,9 +192,10 @@ def run_model(db: Session, n_sims: int = C.N_SIMS, seed: Optional[int] = None, *
     carryover_d = C.CURRENT_SENATE["D"] - up_dem_now
     s_lean = np.array([_senate_lean(r["state"], r["is_special"] == "1", blend) for r in _SENATE])
     s_inc = np.array([_inc_dir(r["incumbent_party"]) for r in _SENATE])
-    s_base = s_lean + env + inc * s_inc
+    s_fund = np.array([senate_fund.get(r["state"], 0.0) for r in _SENATE])
+    s_base = s_lean + env + inc * s_inc + s_fund
     s_dem = carryover_d + _simulate(s_base, n_sims, tau, delta_senate, rng)
-    senate = _summary(s_dem, C.SENATE_DEM_CONTROL, swing, tau, delta_senate, inc)
+    senate = _summary(s_dem, C.SENATE_DEM_CONTROL, swing, tau, delta_senate, inc, fund_coef)
 
     logger.info(
         "Forecast model: swing D%+.1f | House P(D)=%.2f med=%d | Senate P(D)=%.2f med=%d",

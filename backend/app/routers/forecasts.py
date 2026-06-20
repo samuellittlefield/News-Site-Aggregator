@@ -228,6 +228,7 @@ def model_sim(
     delta_senate: float = Query(MC.DELTA_SENATE),
     incumbency_adv: float = Query(MC.INCUMBENCY_ADV),
     senate_prior_blend: float = Query(MC.SENATE_PRIOR_BLEND),
+    fundraising_coef: float = Query(MC.FUNDRAISING_COEF),
     db: Session = Depends(get_db),
 ):
     """Re-run the experimental model with tunable knobs (for the live controls).
@@ -240,6 +241,7 @@ def model_sim(
         delta_senate=_clamp(delta_senate, 0.5, 15.0),
         incumbency_adv=_clamp(incumbency_adv, 0.0, 15.0),
         senate_prior_blend=_clamp(senate_prior_blend, 0.0, 1.0),
+        fundraising_coef=_clamp(fundraising_coef, 0.0, 10.0),
     )
     return ModelSimOut(
         house=_chamber_model(out, "house"),
@@ -250,5 +252,6 @@ def model_sim(
             "delta_senate": MC.DELTA_SENATE,
             "incumbency_adv": MC.INCUMBENCY_ADV,
             "senate_prior_blend": MC.SENATE_PRIOR_BLEND,
+            "fundraising_coef": MC.FUNDRAISING_COEF,
         },
     )

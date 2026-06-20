@@ -32,6 +32,11 @@ const SOURCES: SourceItem[] = [
     detail: "Prediction markets (Kalshi + Polymarket) for House/Senate control. Model forecasts (Silver Bulletin, Race to the WH, Split Ticket) are linked but not ingested.",
     cadence: "markets every 10m",
   },
+  {
+    label: "Experimental seat model",
+    detail: "Our own Monte-Carlo of all 435 House + 35 Senate seats, separate from the markets. Cross-references each seat's last actual result (538 data — captures incumbency) with its 2024 presidential lean (The Downballot), swung by the live generic ballot and nudged by candidate fundraising (FEC). Uncertainty backtested on 2018–24 results. Experimental — it can disagree with the markets.",
+    cadence: "recomputed per request",
+  },
 ];
 
 export function SourcesDisclosure() {

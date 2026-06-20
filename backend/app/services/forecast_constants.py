@@ -54,4 +54,12 @@ DELTA_SENATE = 10.0       # per-seat idiosyncratic SD (backtested on 133 Senate 
                           # 2018–24: competitive seats scatter ~11 pts — Senate is far
                           # more candidate-driven than the House, was overconfident at 7)
 
+# Candidate fundraising edge (FEC). Per seat we compare the best-funded Dem vs
+# best-funded Rep and shift the seat margin by coef × log10(D$ / R$), capped.
+# Money has diminishing returns, so the log; a ~10× cash advantage ≈ +coef points.
+# Targets the recent Dem Senate overperformance the backtest flagged. Judgment
+# value (sparse this early — primaries ongoing); not yet backtested. 0 disables.
+FUNDRAISING_COEF = 3.0
+FUNDRAISING_CAP = 8.0
+
 N_SIMS = 20000

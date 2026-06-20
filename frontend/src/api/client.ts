@@ -877,6 +877,7 @@ export interface ModelKnobs {
   delta_senate: number;
   incumbency_adv: number;
   senate_prior_blend: number;
+  fundraising_coef: number;
 }
 
 export interface ModelSim {
@@ -891,6 +892,7 @@ export const MODEL_KNOB_META: { key: keyof ModelKnobs; label: string; min: numbe
   { key: "delta_senate", label: "Senate seat noise (δ)", min: 0.5, max: 15, step: 0.5, help: "Per-seat idiosyncratic noise — Senate is more candidate-driven." },
   { key: "incumbency_adv", label: "Incumbency advantage", min: 0, max: 15, step: 0.5, help: "Margin nudge toward the party holding the seat." },
   { key: "senate_prior_blend", label: "Senate prior blend", min: 0, max: 1, step: 0.05, help: "0 = pure 2024 presidential lean · 1 = pure last Senate result (more incumbency)." },
+  { key: "fundraising_coef", label: "Fundraising weight", min: 0, max: 10, step: 0.5, help: "Margin shift per 10× cash advantage (FEC). 0 = ignore fundraising." },
 ];
 
 export function useModelSim(knobs: ModelKnobs | null) {

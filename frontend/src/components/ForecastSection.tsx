@@ -7,7 +7,7 @@ import { MiniSparkline } from "./dashboard/MiniSparkline";
 import { ModelControls } from "./ModelControls";
 
 const DEFAULT_KNOBS: ModelKnobs = {
-  tau: 3, delta_house: 5, delta_senate: 7, incumbency_adv: 3, senate_prior_blend: 0.5,
+  tau: 3.5, delta_house: 5.5, delta_senate: 10, incumbency_adv: 0, senate_prior_blend: 0.5, fundraising_coef: 3,
 };
 
 const PLATFORM_LABEL: Record<string, string> = {
@@ -135,7 +135,8 @@ function ModelBasis({ chambers }: { chambers: ChamberForecast[] }) {
           <p>
             <span className="text-gray-300">Priors.</span> Each seat blends its last same-office result
             (House: 2024 · Senate: 2020, or 2022 for FL/OH) with the 2024 presidential lean — so the prior
-            carries incumbency, not just partisanship.
+            carries incumbency, not just partisanship. Seats are then nudged by the
+            <span className="text-gray-300"> FEC fundraising gap</span> between the parties' best-funded candidates.
           </p>
           <p>
             <span className="text-gray-300">Uncertainty.</span> {m.n_sims.toLocaleString()} Monte-Carlo sims

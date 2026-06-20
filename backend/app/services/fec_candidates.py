@@ -85,6 +85,20 @@ async def _fec_paginate(client: httpx.AsyncClient, endpoint: str, params: dict) 
     return results
 
 
+async def fetch_candidate_totals(client: httpx.AsyncClient, office: str) -> dict:
+    """{candidate_id: total receipts} for the 2026 cycle (full-election aggregate).
+    Used to populate candidate fundraising — a viability/quality signal."""
+    rows = await _fec_paginate(client, "/candidates/totals/", {
+        "cycle": 2026, "office": office, "election_full": "true", "min_receipts": 1,
+    })
+    out: dict[str, float] = {}
+    for r in rows:
+        cid = r.get("candidate_id")
+        if cid:
+            out[cid] = float(r.get("receipts") or 0.0)
+    return out
+
+
 def _party_short(party_full: Optional[str]) -> str:
     if not party_full:
         return "OTH"
@@ -168,6 +182,7 @@ async def fetch_house_candidates(db: Session) -> int:
         rows = await _fec_paginate(client, "/candidates/", {
             "election_year": 2026, "office": "H",
         })
+        totals = await fetch_candidate_totals(client, "H")
 
     count = 0
     for row in rows:
@@ -202,7 +217,7 @@ async def fetch_house_candidates(db: Session) -> int:
             office="H",
             incumbent=incumbent,
             primary_date=primary_dt,
-            fundraising=None,
+            fundraising=totals.get(row.get("candidate_id")),
             cook_rating=cook,
         )
         count += 1
@@ -220,6 +235,7 @@ async def fetch_senate_candidates(db: Session) -> int:
         rows = await _fec_paginate(client, "/candidates/", {
             "election_year": 2026, "office": "S",
         })
+        totals = await fetch_candidate_totals(client, "S")
 
     count = 0
     for row in rows:
@@ -239,7 +255,7 @@ async def fetch_senate_candidates(db: Session) -> int:
             office="S",
             incumbent=row.get("incumbent_challenge"),
             primary_date=primary_dt,
-            fundraising=None,
+            fundraising=totals.get(row.get("candidate_id")),
         )
         count += 1
 
