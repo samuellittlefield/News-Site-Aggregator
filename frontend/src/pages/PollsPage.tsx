@@ -23,7 +23,7 @@ export function PollsPage() {
         <div className="space-y-1">
           <h2 className="text-xl font-bold text-white tracking-tight">2026 House Polling</h2>
           <p className="text-xs text-gray-500">
-            {districts.length} competitive districts tracked ·{" "}
+            All {districts.length} House districts ·{" "}
             {polls.length > 0 ? `${polls.length} polls` : "Individual district polls loading as cycle progresses"}
           </p>
         </div>
@@ -38,13 +38,13 @@ export function PollsPage() {
         <VoteHubApprovalCard />
         <ApprovalSection />
 
-        {/* 3D district map */}
+        {/* District hex cartogram + click-detail panel */}
         <div className="space-y-2">
           <p className="text-xs text-gray-600 uppercase tracking-wider">
-            Competitive Districts — 3D Polling Signal Map
+            House Districts — Hex Cartogram
           </p>
           <p className="text-[10px] text-gray-700">
-            Height = polling intensity · Color = partisan lean · Source: Cook Political Report 2026 ratings + Wikipedia polls
+            Every district equal-size, colored by 2024 presidential lean · click any district for candidates &amp; fundraising
           </p>
           {distLoading ? (
             <div className="h-96 bg-gray-900 rounded-xl animate-pulse" />

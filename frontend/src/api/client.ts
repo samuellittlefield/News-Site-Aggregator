@@ -441,25 +441,35 @@ export interface HousePoll {
   source_url: string | null;
 }
 
+export interface DistrictCandidate {
+  name: string;
+  party: string | null;                 // DEM/REP/IND/...
+  incumbent_challenge: string | null;    // I / C / O
+  fundraising_total: number | null;
+}
+
+export interface DistrictLatestPoll {
+  margin: number | null;
+  dem: number | null;
+  rep: number | null;
+  pollster: string | null;
+  date: string | null;
+}
+
 export interface DistrictData {
   state: string;
-  district: number;
+  district: string;                      // "1".."52" or "AL"
+  label: string;                         // "PA-08"
+  q: number;                             // axial hex coords (pointy-top)
+  r: number;
+  pres_margin_2024: number | null;       // D−R, drives hex color
+  house_margin_2024: number | null;
+  incumbent_party: string | null;        // D / R / O
   cook_rating: string | null;
-  dem_2024: number | null;
-  rep_2024: number | null;
-  margin_2024: number | null;
-  lat: number;
-  lng: number;
-  incumbent_party: string | null;
+  rating: string;                        // derived full-coverage label
   poll_count: number;
-  poll_intensity: number;
-  height: number;
-  latest_margin: number | null;
-  latest_dem: number | null;
-  latest_rep: number | null;
-  latest_pollster: string | null;
-  latest_date: string | null;
-  color: [number, number, number, number];
+  latest_poll: DistrictLatestPoll | null;
+  candidates: DistrictCandidate[];
 }
 
 export interface GenericBallot {

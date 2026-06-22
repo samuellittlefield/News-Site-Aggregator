@@ -1,3 +1,6 @@
+import collections
+import csv
+import os
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
@@ -6,41 +9,44 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import CompetitiveDistrict, HousePoll
+from app.models import Candidate, CompetitiveDistrict, HousePoll
 from app.services.house_polls import fetch_generic_ballot
 from app.services.votehub import compute_average as compute_votehub_average
 
 router = APIRouter(prefix="/api/polls", tags=["polls"])
 
-COOK_HEIGHT = {
-    "Toss-up": 60_000,
-    "Lean D": 35_000,
-    "Lean R": 35_000,
-    "Likely D": 15_000,
-    "Likely R": 15_000,
-}
+_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 
 
-def _margin_to_color(margin: Optional[float], cook: Optional[str]) -> list[int]:
-    """Returns [R, G, B, A] based on partisan margin (dem - rep)."""
+def _load_csv(name: str) -> list:
+    with open(os.path.join(_DATA_DIR, name), newline="") as f:
+        return list(csv.DictReader(f))
+
+
+# Vendored full-coverage baselines (tiny, loaded once at import).
+_PRIORS = _load_csv("house_priors.csv")  # state, district, pres2024_margin, house2024_margin, incumbent_party
+_HEX = {(r["state"], r["district"]): (int(r["q"]), int(r["r"])) for r in _load_csv("house_hexgrid.csv")}
+
+def _cand_district(district: str) -> int:
+    """house_priors uses 'AL' for at-large; FEC/poll tables key at-large as 0."""
+    return 0 if district == "AL" else int(district)
+
+
+def _derived_rating(margin: Optional[float]) -> str:
+    """Full-coverage competitiveness label from the presidential margin (D−R),
+    used where there's no official Cook rating. Thresholds are tuned to pres
+    margins, which run wider than race ratings."""
     if margin is None:
-        # Use Cook rating as proxy
-        cook_colors = {
-            "Toss-up": [150, 80, 160, 200],
-            "Lean D":  [80, 140, 220, 200],
-            "Lean R":  [220, 60,  80, 200],
-            "Likely D":[30, 100, 220, 180],
-            "Likely R":[210, 20,  40, 180],
-        }
-        return cook_colors.get(cook or "", [90, 90, 90, 180])
-
-    if margin > 10:   return [30, 100, 220, 220]
-    if margin > 5:    return [80, 140, 220, 220]
-    if margin > 2:    return [130, 140, 200, 220]
-    if margin > -2:   return [150, 80, 160, 220]
-    if margin > -5:   return [200, 100, 110, 220]
-    if margin > -10:  return [220, 60,  80, 220]
-    return [210, 20, 40, 220]
+        return "Unknown"
+    a = abs(margin)
+    side = "D" if margin > 0 else "R"
+    if a < 4:
+        return "Toss-up"
+    if a < 9:
+        return f"Lean {side}"
+    if a < 18:
+        return f"Likely {side}"
+    return f"Safe {side}"
 
 
 # ── /api/polls/house ──────────────────────────────────────────────────────────
@@ -75,98 +81,105 @@ def get_house_polls(limit: int = 200, db: Session = Depends(get_db)):
 
 # ── /api/polls/house/districts ────────────────────────────────────────────────
 
+class CandidateOut(BaseModel):
+    """One candidate in a district. Deliberately an extensible object so future
+    'resources' (bio, links, issue tags, news) attach as new fields without
+    reshaping the map payload."""
+    name: str
+    party: Optional[str]                  # DEM/REP/IND/...
+    incumbent_challenge: Optional[str]    # I (incumbent) / C (challenger) / O (open)
+    fundraising_total: Optional[float]
+
+
+class LatestPoll(BaseModel):
+    margin: Optional[float]               # dem − rep
+    dem: Optional[float]
+    rep: Optional[float]
+    pollster: Optional[str]
+    date: Optional[datetime]
+
+
 class DistrictOut(BaseModel):
     state: str
-    district: int
-    cook_rating: Optional[str]
-    dem_2024: Optional[float]
-    rep_2024: Optional[float]
-    margin_2024: Optional[float]
-    lat: float
-    lng: float
-    incumbent_party: Optional[str]
+    district: str                         # "1".."52" or "AL" (at-large)
+    label: str                            # "PA-08" / "AK-AL"
+    q: int                                # axial hex coords (pointy-top)
+    r: int
+    pres_margin_2024: Optional[float]     # presidential D−R — drives the hex color
+    house_margin_2024: Optional[float]    # 2024 House result D−R (None if uncontested)
+    incumbent_party: Optional[str]        # D / R / O
+    cook_rating: Optional[str]            # official rating where we have one (sparse)
+    rating: str                           # derived full-coverage label
     poll_count: int
-    poll_intensity: float
-    height: float
-    latest_margin: Optional[float]
-    latest_dem: Optional[float]
-    latest_rep: Optional[float]
-    latest_pollster: Optional[str]
-    latest_date: Optional[datetime]
-    color: list[int]
+    latest_poll: Optional[LatestPoll]
+    candidates: List[CandidateOut]
 
 
 @router.get("/house/districts", response_model=List[DistrictOut])
 def get_house_districts(db: Session = Depends(get_db)):
-    districts = db.query(CompetitiveDistrict).all()
-    now = datetime.now(timezone.utc)
+    """Full 435-district hex-cartogram feed: each district's partisan lean, hex
+    position, candidate list (names + fundraising), and any polls. Built off the
+    vendored house_priors universe so coverage is complete regardless of which
+    districts have polls or Cook ratings."""
+    # Group candidates and polls by district; official Cook ratings where present.
+    cands: dict = collections.defaultdict(list)
+    for c in db.query(Candidate).filter(Candidate.office == "H").all():
+        if c.district is None:
+            continue
+        cands[(c.state, c.district)].append(c)
+
+    cook = {(d.state, d.district): d.cook_rating for d in db.query(CompetitiveDistrict).all()}
+
+    polls: dict = collections.defaultdict(list)
+    for p in db.query(HousePoll).all():
+        polls[(p.state, p.district)].append(p)
+
     results = []
+    for row in _PRIORS:
+        state, district = row["state"], row["district"]
+        q, r = _HEX.get((state, district), (0, 0))
+        pres = float(row["pres2024_margin"]) if row["pres2024_margin"] else None
+        house_m = float(row["house2024_margin"]) if row["house2024_margin"] else None
+        di = _cand_district(district)
 
-    # Compute max intensity for normalization
-    max_intensity = 1.0
-
-    district_polls: dict[tuple, list] = {}
-    all_polls = db.query(HousePoll).all()
-    for p in all_polls:
-        key = (p.state, p.district)
-        district_polls.setdefault(key, []).append(p)
-
-    # First pass: compute intensities
-    intensities: dict[tuple, float] = {}
-    for dist in districts:
-        key = (dist.state, dist.district)
-        polls = district_polls.get(key, [])
-        intensity = sum(
-            1.0 / ((now - p.end_date).days + 1)
-            for p in polls if p.end_date and p.end_date <= now
+        clist = sorted(
+            cands.get((state, di), []),
+            key=lambda c: -(c.fundraising_total or 0.0),
         )
-        intensities[key] = intensity
-        if intensity > max_intensity:
-            max_intensity = intensity
-
-    MAX_HEIGHT = 80_000.0
-
-    for dist in districts:
-        key = (dist.state, dist.district)
-        polls = district_polls.get(key, [])
-        intensity = intensities.get(key, 0.0)
-
-        # Latest poll
-        latest = max(polls, key=lambda p: p.end_date or datetime.min.replace(tzinfo=timezone.utc), default=None)
-        latest_margin = (latest.dem - latest.rep) if latest and latest.dem and latest.rep else None
-
-        # Height: polls drive it up, Cook rating sets the floor
-        cook_floor = COOK_HEIGHT.get(dist.cook_rating or "", 10_000)
-        if intensity > 0:
-            poll_height = (intensity / max_intensity) * MAX_HEIGHT
-            height = max(poll_height, cook_floor)
-        else:
-            height = float(cook_floor)
-
-        color = _margin_to_color(latest_margin, dist.cook_rating)
+        plist = polls.get((state, di), [])
+        latest = max(
+            plist,
+            key=lambda p: p.end_date or datetime.min.replace(tzinfo=timezone.utc),
+            default=None,
+        )
+        latest_poll = None
+        if latest:
+            margin = (latest.dem - latest.rep) if latest.dem is not None and latest.rep is not None else None
+            latest_poll = LatestPoll(
+                margin=round(margin, 1) if margin is not None else None,
+                dem=latest.dem, rep=latest.rep,
+                pollster=latest.pollster, date=latest.end_date,
+            )
 
         results.append(DistrictOut(
-            state=dist.state,
-            district=dist.district,
-            cook_rating=dist.cook_rating,
-            dem_2024=dist.dem_2024,
-            rep_2024=dist.rep_2024,
-            margin_2024=dist.margin_2024,
-            lat=dist.lat,
-            lng=dist.lng,
-            incumbent_party=dist.incumbent_party,
-            poll_count=len(polls),
-            poll_intensity=round(intensity, 3),
-            height=round(height, 1),
-            latest_margin=round(latest_margin, 1) if latest_margin is not None else None,
-            latest_dem=latest.dem if latest else None,
-            latest_rep=latest.rep if latest else None,
-            latest_pollster=latest.pollster if latest else None,
-            latest_date=latest.end_date if latest else None,
-            color=color,
+            state=state,
+            district=district,
+            label=f"{state}-{district}",
+            q=q, r=r,
+            pres_margin_2024=pres,
+            house_margin_2024=house_m,
+            incumbent_party=row.get("incumbent_party") or None,
+            cook_rating=cook.get((state, di)),
+            rating=_derived_rating(pres),
+            poll_count=len(plist),
+            latest_poll=latest_poll,
+            candidates=[CandidateOut(
+                name=c.name, party=c.party,
+                incumbent_challenge=c.incumbent_challenge,
+                fundraising_total=c.fundraising_total,
+            ) for c in clist],
         ))
 
-    results.sort(key=lambda d: d.height, reverse=True)
     return results
 
 
