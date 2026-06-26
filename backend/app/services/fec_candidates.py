@@ -7,6 +7,7 @@ dates, and seeds Governor races from a hardcoded list with Wikipedia scanning.
 Requires FEC_API_KEY in .env (free at https://api.data.gov/signup/).
 Falls back to DEMO_KEY (rate-limited to 40/hr) if not set.
 """
+import asyncio
 import logging
 import os
 import re
@@ -57,31 +58,48 @@ GOVERNOR_PRIMARY_DATES: dict[str, str] = {
 
 # ── FEC API helpers ───────────────────────────────────────────────────────────
 
-async def _fec_paginate(client: httpx.AsyncClient, endpoint: str, params: dict) -> list[dict]:
-    """Paginate through FEC API results."""
-    results = []
+async def _fec_paginate(client: httpx.AsyncClient, endpoint: str, params: dict,
+                        max_retries: int = 4) -> list[dict]:
+    """Paginate through FEC API results, resilient to transient failures.
+
+    The /totals/ endpoint is slow and intermittently times out from cloud hosts;
+    a single hiccup must NOT abandon the remaining pages (that previously left
+    fundraising almost entirely unpopulated). Each page is retried with backoff;
+    only a hard error (e.g. an invalid key → 4xx) stops the whole fetch."""
+    results: list = []
     page = 1
     params = {**params, "api_key": _fec_key(), "per_page": 100, "page": page}
     while True:
-        try:
-            resp = await client.get(f"{FEC_BASE}{endpoint}", params=params)
-            if resp.status_code == 429:
-                logger.warning("FEC rate limit hit — partial results returned")
+        data = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                resp = await client.get(f"{FEC_BASE}{endpoint}", params=params)
+                if resp.status_code == 429:
+                    logger.warning("FEC rate limit (429) on page %d, attempt %d/%d",
+                                   page, attempt, max_retries)
+                    await asyncio.sleep(2 * attempt)
+                    continue
+                if resp.status_code != 200:
+                    # Hard error (bad key, bad request) — retrying won't help.
+                    logger.warning("FEC API error %s on page %d: %s",
+                                   resp.status_code, page, resp.text[:200])
+                    return results
+                data = resp.json()
                 break
-            if resp.status_code != 200:
-                logger.warning("FEC API error %s: %s", resp.status_code, resp.text[:200])
-                break
-            data = resp.json()
-            batch = data.get("results", [])
-            results.extend(batch)
-            pagination = data.get("pagination", {})
-            if page >= pagination.get("pages", 1):
-                break
-            page += 1
-            params["page"] = page
-        except Exception as e:
-            logger.warning("FEC request failed: %s", e)
+            except Exception as e:  # noqa: BLE001 — timeouts etc.; %r so empty-message excs still show
+                logger.warning("FEC request failed on page %d, attempt %d/%d: %r",
+                               page, attempt, max_retries, e)
+                await asyncio.sleep(1.5 * attempt)
+        if data is None:
+            logger.warning("FEC: giving up on page %d after %d attempts (%d rows so far)",
+                           page, max_retries, len(results))
             break
+        results.extend(data.get("results", []))
+        pagination = data.get("pagination", {})
+        if page >= pagination.get("pages", 1):
+            break
+        page += 1
+        params["page"] = page
     return results
 
 
@@ -177,7 +195,7 @@ async def fetch_house_candidates(db: Session) -> int:
         for d in db.query(CompetitiveDistrict).all()
     }
 
-    async with httpx.AsyncClient(headers=HEADERS, timeout=30.0) as client:
+    async with httpx.AsyncClient(headers=HEADERS, timeout=60.0) as client:
         primary_map = await fetch_primary_dates(client)
         rows = await _fec_paginate(client, "/candidates/", {
             "election_year": 2026, "office": "H",
@@ -230,7 +248,7 @@ async def fetch_house_candidates(db: Session) -> int:
 # ── Senate candidates ─────────────────────────────────────────────────────────
 
 async def fetch_senate_candidates(db: Session) -> int:
-    async with httpx.AsyncClient(headers=HEADERS, timeout=30.0) as client:
+    async with httpx.AsyncClient(headers=HEADERS, timeout=60.0) as client:
         primary_map = await fetch_primary_dates(client)
         rows = await _fec_paginate(client, "/candidates/", {
             "election_year": 2026, "office": "S",
@@ -269,7 +287,7 @@ async def fetch_senate_candidates(db: Session) -> int:
 async def seed_governor_races(db: Session) -> int:
     """Seed governor candidates from Wikipedia pages."""
     count = 0
-    async with httpx.AsyncClient(headers=HEADERS, timeout=15.0) as client:
+    async with httpx.AsyncClient(headers=HEADERS, timeout=45.0) as client:
         for state in GOVERNOR_STATES_2026:
             primary_date_str = GOVERNOR_PRIMARY_DATES.get(state)
             primary_dt = date.fromisoformat(primary_date_str) if primary_date_str else None
