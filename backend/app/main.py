@@ -29,25 +29,44 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger(__name__)
 
 
+async def _safe_refresh(name: str, fn, timeout: float = 180.0):
+    """Run one startup refresh step in isolation: a step that errors or hangs is
+    logged and skipped so it can't starve the steps after it (notably the FEC
+    candidate fetch, which sits near the end of the chain)."""
+    try:
+        await asyncio.wait_for(fn(), timeout=timeout)
+    except asyncio.TimeoutError:
+        logger.warning("Startup refresh step '%s' timed out after %ss; skipping", name, timeout)
+    except Exception:  # noqa: BLE001
+        logger.exception("Startup refresh step '%s' failed; continuing", name)
+
+
 async def _startup_refresh():
-    """Run an initial full refresh shortly after startup so summaries are populated immediately."""
+    """Run an initial full refresh shortly after startup so summaries are populated
+    immediately. Each step is isolated so one slow/broken source can't abort the rest."""
     await asyncio.sleep(5)  # brief pause to let DB connections settle
     logger.info("Running startup refresh...")
-    # Fast/cheap sources first so the dashboard populates immediately
-    await refresh_votehub()
-    await refresh_earthquakes()
-    await refresh_faa()
-    await refresh_markets()
-    await refresh_kalshi()
-    await refresh_all()
-    await refresh_extended_sources()
-    await refresh_news()
-    await refresh_status()
-    await refresh_weather()
-    await refresh_nws_alerts()
-    await refresh_house_polls()
-    await refresh_candidates()
-    await refresh_economist()
+    # Fast/cheap sources first so the dashboard populates immediately.
+    # (name, fn, timeout_seconds) — candidates pulls all of FEC + issue-tags, so
+    # it gets a longer budget than the lighter feed refreshes.
+    steps = [
+        ("votehub", refresh_votehub, 120.0),
+        ("earthquakes", refresh_earthquakes, 120.0),
+        ("faa", refresh_faa, 120.0),
+        ("markets", refresh_markets, 120.0),
+        ("kalshi", refresh_kalshi, 120.0),
+        ("all", refresh_all, 180.0),
+        ("extended_sources", refresh_extended_sources, 180.0),
+        ("news", refresh_news, 180.0),
+        ("status", refresh_status, 120.0),
+        ("weather", refresh_weather, 120.0),
+        ("nws_alerts", refresh_nws_alerts, 120.0),
+        ("house_polls", refresh_house_polls, 180.0),
+        ("candidates", refresh_candidates, 600.0),
+        ("economist", refresh_economist, 180.0),
+    ]
+    for name, fn, timeout in steps:
+        await _safe_refresh(name, fn, timeout)
     logger.info("Startup refresh complete")
 
 
