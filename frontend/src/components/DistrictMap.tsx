@@ -47,13 +47,38 @@ function money(n: number | null): string {
   return `$${Math.round(n)}`;
 }
 
+// "Sykes, Emilia" → "Emilia Sykes" for cleaner search queries.
+function searchName(name: string): string {
+  const [last, ...rest] = name.split(",");
+  return rest.length ? `${rest.join(" ").trim()} ${last.trim()}` : name.trim();
+}
+function fecUrl(fecId: string | null): string | null {
+  return fecId ? `https://www.fec.gov/data/candidate/${fecId}/` : null;
+}
+function newsUrl(name: string, state: string): string {
+  return `https://news.google.com/search?q=${encodeURIComponent(`${searchName(name)} ${state} congress`)}`;
+}
+function wikiUrl(name: string): string {
+  return `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(searchName(name))}`;
+}
+
+function ResourceLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer"
+       className="text-gray-500 hover:text-gray-200 transition-colors">
+      {label} ↗
+    </a>
+  );
+}
+
 interface Props {
   districts: DistrictData[];
 }
 
-function CandidateRow({ c, max }: { c: DistrictCandidate; max: number }) {
+function CandidateRow({ c, max, state }: { c: DistrictCandidate; max: number; state: string }) {
   const w = max > 0 && c.fundraising_total ? Math.round((c.fundraising_total / max) * 100) : 0;
   const col = partyColor(c.party);
+  const fec = fecUrl(c.fec_id);
   return (
     <div className="mb-2.5">
       <div className="flex items-center gap-1.5 text-[13px] mb-0.5">
@@ -68,6 +93,11 @@ function CandidateRow({ c, max }: { c: DistrictCandidate; max: number }) {
           <div className="h-full rounded-full" style={{ width: `${w}%`, background: col }} />
         </div>
         <span className="text-[11px] text-gray-500 tabular-nums w-12 text-right">{money(c.fundraising_total)}</span>
+      </div>
+      <div className="flex items-center gap-2.5 pl-3.5 mt-1 text-[10px]">
+        {fec && <ResourceLink href={fec} label="FEC" />}
+        <ResourceLink href={newsUrl(c.name, state)} label="News" />
+        <ResourceLink href={wikiUrl(c.name)} label="Wikipedia" />
       </div>
     </div>
   );
@@ -101,7 +131,7 @@ function DistrictDetail({ d }: { d: DistrictData }) {
       </div>
 
       {headline.length > 0 ? (
-        <>{headline.map(c => <CandidateRow key={c.name} c={c} max={maxRaise} />)}</>
+        <>{headline.map(c => <CandidateRow key={c.name} c={c} max={maxRaise} state={d.state} />)}</>
       ) : (
         <p className="text-[12px] text-gray-600">No major-party candidates on file yet.</p>
       )}
@@ -112,12 +142,16 @@ function DistrictDetail({ d }: { d: DistrictData }) {
             Also running ({others.length})
           </p>
           <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-            {others.slice(0, 8).map(c => (
-              <span key={c.name} className="text-[11px] text-gray-500">
-                <span className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle" style={{ background: partyColor(c.party) }} />
-                {c.name.split(",")[0]}
-              </span>
-            ))}
+            {others.slice(0, 8).map(c => {
+              const href = fecUrl(c.fec_id) ?? newsUrl(c.name, d.state);
+              return (
+                <a key={c.name} href={href} target="_blank" rel="noopener noreferrer"
+                   className="text-[11px] text-gray-500 hover:text-gray-300 transition-colors">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle" style={{ background: partyColor(c.party) }} />
+                  {c.name.split(",")[0]}
+                </a>
+              );
+            })}
             {others.length > 8 && <span className="text-[11px] text-gray-600">+{others.length - 8} more</span>}
           </div>
         </div>
@@ -141,17 +175,6 @@ function DistrictDetail({ d }: { d: DistrictData }) {
           2024 House result: {leanLabel(d.house_margin_2024)}
         </p>
       )}
-
-      {/* Future candidate resources — designed in, not yet populated */}
-      <div className="mt-3 opacity-40">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Resources</p>
-        <div className="flex flex-col gap-1 text-[12px] text-gray-400">
-          <span>Candidate profiles</span>
-          <span>Fundraising detail</span>
-          <span>News &amp; links</span>
-        </div>
-        <p className="text-[10px] text-gray-600 mt-1">coming soon</p>
-      </div>
     </div>
   );
 }

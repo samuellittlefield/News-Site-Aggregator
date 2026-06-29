@@ -89,6 +89,7 @@ class CandidateOut(BaseModel):
     party: Optional[str]                  # DEM/REP/IND/...
     incumbent_challenge: Optional[str]    # I (incumbent) / C (challenger) / O (open)
     fundraising_total: Optional[float]
+    fec_id: Optional[str]                 # FEC candidate id → fec.gov profile link
 
 
 class LatestPoll(BaseModel):
@@ -177,6 +178,7 @@ def get_house_districts(db: Session = Depends(get_db)):
                 name=c.name, party=c.party,
                 incumbent_challenge=c.incumbent_challenge,
                 fundraising_total=c.fundraising_total,
+                fec_id=c.fec_id,
             ) for c in clist],
         ))
 

@@ -446,6 +446,7 @@ export interface DistrictCandidate {
   party: string | null;                 // DEM/REP/IND/...
   incumbent_challenge: string | null;    // I / C / O
   fundraising_total: number | null;
+  fec_id: string | null;                 // → fec.gov/data/candidate/{fec_id}
 }
 
 export interface DistrictLatestPoll {
