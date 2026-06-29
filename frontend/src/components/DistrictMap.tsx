@@ -75,16 +75,18 @@ interface Props {
   districts: DistrictData[];
 }
 
-function CandidateRow({ c, max, state }: { c: DistrictCandidate; max: number; state: string }) {
+function CandidateRow({ c, max, state, openSeat }: { c: DistrictCandidate; max: number; state: string; openSeat: boolean }) {
   const w = max > 0 && c.fundraising_total ? Math.round((c.fundraising_total / max) * 100) : 0;
   const col = partyColor(c.party);
   const fec = fecUrl(c.fec_id);
+  // Suppress the "inc" badge on an open seat — the sitting member isn't running.
+  const showInc = c.incumbent_challenge === "I" && !openSeat;
   return (
     <div className="mb-2.5">
       <div className="flex items-center gap-1.5 text-[13px] mb-0.5">
         <span className="w-2 h-2 rounded-full flex-none" style={{ background: col }} />
         <span className="text-gray-200">{c.name}</span>
-        {c.incumbent_challenge === "I" && (
+        {showInc && (
           <span className="text-[9px] uppercase tracking-wide text-gray-500 border border-gray-700 rounded px-1">inc</span>
         )}
       </div>
@@ -104,12 +106,15 @@ function CandidateRow({ c, max, state }: { c: DistrictCandidate; max: number; st
 }
 
 function DistrictDetail({ d }: { d: DistrictData }) {
-  // Headline matchup: the incumbent for each party (so a primary challenger who
-  // out-raised the sitting member doesn't bury them), else the best-funded.
+  // Headline matchup: normally the incumbent for each party (so a primary
+  // challenger who out-raised the sitting member doesn't bury them), else the
+  // best-funded. But on an OPEN seat the incumbent isn't running, so we don't
+  // elevate them — headline the best-funded instead (the likely nominee).
   // candidates arrive fundraising-sorted, so [0] is the top-funded.
   const dems = d.candidates.filter(c => (c.party || "").toUpperCase().startsWith("DEM"));
   const reps = d.candidates.filter(c => (c.party || "").toUpperCase().startsWith("REP"));
-  const pick = (arr: DistrictCandidate[]) => arr.find(c => c.incumbent_challenge === "I") || arr[0];
+  const pick = (arr: DistrictCandidate[]) =>
+    (d.open_seat ? undefined : arr.find(c => c.incumbent_challenge === "I")) || arr[0];
   const headline = [pick(dems), pick(reps)].filter(Boolean) as DistrictCandidate[];
   const maxRaise = Math.max(1, ...headline.map(c => c.fundraising_total || 0));
   const headlineNames = new Set(headline.map(c => c.name));
@@ -124,14 +129,24 @@ function DistrictDetail({ d }: { d: DistrictData }) {
         <span className="text-lg font-semibold text-white">{d.label}</span>
         <span className="text-xs font-medium" style={{ color: ratingColor }}>{leanLabel(d.pres_margin_2024)}</span>
       </div>
-      <div className="text-[11px] text-gray-500 mb-3 flex items-center gap-1.5">
+      <div className="text-[11px] text-gray-500 mb-3 flex items-center flex-wrap gap-x-1.5">
         <span>{ratingLabel}</span>
         {d.cook_rating && <span className="text-gray-700">· Cook</span>}
+        {d.open_seat && <span className="text-amber-500/80">· Open seat</span>}
         <span className="text-gray-700">· 2026</span>
       </div>
 
+      {d.open_seat && d.departing_incumbent && (
+        <p className="text-[11px] text-gray-500 mb-3 -mt-1 leading-snug">
+          <span className="text-amber-500/70">Open:</span>{" "}
+          {d.departing_incumbent.name}
+          {d.departing_incumbent.party ? ` (${d.departing_incumbent.party})` : ""}{" "}
+          {d.departing_incumbent.reason || "is not seeking re-election"}.
+        </p>
+      )}
+
       {headline.length > 0 ? (
-        <>{headline.map(c => <CandidateRow key={c.name} c={c} max={maxRaise} state={d.state} />)}</>
+        <>{headline.map(c => <CandidateRow key={c.name} c={c} max={maxRaise} state={d.state} openSeat={d.open_seat} />)}</>
       ) : (
         <p className="text-[12px] text-gray-600">No major-party candidates on file yet.</p>
       )}

@@ -21,7 +21,7 @@ from app.routers import votehub as votehub_router
 from app.routers import hazards as hazards_router
 from app.routers import markets as markets_router
 from app.routers import forecasts as forecasts_router
-from app.scheduler import refresh_all, refresh_breakout, refresh_candidates, refresh_climate, refresh_earthquakes, refresh_economist, refresh_extended_sources, refresh_faa, refresh_house_polls, refresh_kalshi, refresh_markets, refresh_news, refresh_nws_alerts, refresh_status, refresh_votehub, refresh_weather, start_scheduler
+from app.scheduler import refresh_all, refresh_breakout, refresh_candidates, refresh_climate, refresh_earthquakes, refresh_economist, refresh_extended_sources, refresh_faa, refresh_house_polls, refresh_kalshi, refresh_markets, refresh_news, refresh_nws_alerts, refresh_retirements, refresh_status, refresh_votehub, refresh_weather, start_scheduler
 from fastapi import BackgroundTasks
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
@@ -63,6 +63,7 @@ async def _startup_refresh():
         ("nws_alerts", refresh_nws_alerts, 120.0),
         ("house_polls", refresh_house_polls, 180.0),
         ("candidates", refresh_candidates, 600.0),
+        ("retirements", refresh_retirements, 120.0),
         ("economist", refresh_economist, 180.0),
     ]
     for name, fn, timeout in steps:

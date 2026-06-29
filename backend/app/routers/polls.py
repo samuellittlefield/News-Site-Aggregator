@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Candidate, CompetitiveDistrict, HousePoll
+from app.models import Candidate, CompetitiveDistrict, HousePoll, HouseRetirement
 from app.services.house_polls import fetch_generic_ballot
 from app.services.votehub import compute_average as compute_votehub_average
 
@@ -100,6 +100,15 @@ class LatestPoll(BaseModel):
     date: Optional[datetime]
 
 
+class DepartingIncumbent(BaseModel):
+    """The sitting member who isn't seeking re-election (→ open seat). FEC still
+    lists them as an active candidate, so this comes from the Wikipedia
+    retirements list, not FEC."""
+    name: str
+    party: Optional[str]
+    reason: Optional[str]
+
+
 class DistrictOut(BaseModel):
     state: str
     district: str                         # "1".."52" or "AL" (at-large)
@@ -111,6 +120,8 @@ class DistrictOut(BaseModel):
     incumbent_party: Optional[str]        # D / R / O
     cook_rating: Optional[str]            # official rating where we have one (sparse)
     rating: str                           # derived full-coverage label
+    open_seat: bool                       # incumbent not seeking re-election
+    departing_incumbent: Optional[DepartingIncumbent]
     poll_count: int
     latest_poll: Optional[LatestPoll]
     candidates: List[CandidateOut]
@@ -131,6 +142,9 @@ def get_house_districts(db: Session = Depends(get_db)):
 
     cook = {(d.state, d.district): d.cook_rating for d in db.query(CompetitiveDistrict).all()}
 
+    # Departing incumbents (open seats) — keyed by (state, district).
+    retire = {(r.state, r.district): r for r in db.query(HouseRetirement).all()}
+
     polls: dict = collections.defaultdict(list)
     for p in db.query(HousePoll).all():
         polls[(p.state, p.district)].append(p)
@@ -142,6 +156,11 @@ def get_house_districts(db: Session = Depends(get_db)):
         pres = float(row["pres2024_margin"]) if row["pres2024_margin"] else None
         house_m = float(row["house2024_margin"]) if row["house2024_margin"] else None
         di = _cand_district(district)
+
+        ret = retire.get((state, di))
+        departing = DepartingIncumbent(
+            name=ret.member_name, party=ret.party, reason=ret.reason,
+        ) if ret else None
 
         clist = sorted(
             cands.get((state, di), []),
@@ -172,6 +191,8 @@ def get_house_districts(db: Session = Depends(get_db)):
             incumbent_party=row.get("incumbent_party") or None,
             cook_rating=cook.get((state, di)),
             rating=_derived_rating(pres),
+            open_seat=ret is not None,
+            departing_incumbent=departing,
             poll_count=len(plist),
             latest_poll=latest_poll,
             candidates=[CandidateOut(

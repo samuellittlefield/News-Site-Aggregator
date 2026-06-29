@@ -229,6 +229,22 @@ class CompetitiveDistrict(Base):
     incumbent_party = Column(String(1), nullable=True)  # D / R / O (open)
 
 
+class HouseRetirement(Base):
+    """A sitting House member NOT seeking re-election in 2026 (scraped from the
+    Wikipedia '2026 House elections → Retirements' list). FEC can't tell us this —
+    it keeps withdrawn members flagged as active candidates — so this is the
+    authoritative 'incumbent is departing → open seat' signal."""
+    __tablename__ = "house_retirements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    state = Column(String(2), nullable=False)
+    district = Column(Integer, nullable=False)            # 0 = at-large / delegate
+    member_name = Column(String, nullable=False)
+    party = Column(String(1), nullable=True)              # D / R
+    reason = Column(String, nullable=True)                # e.g. "retiring to run for U.S. Senate"
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class EconYouGovReport(Base):
     __tablename__ = "econ_yougov_reports"
 

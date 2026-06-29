@@ -25,6 +25,7 @@ from app.services import nws_alerts as nws_alerts_service
 from app.services import house_polls as house_polls_service
 from app.services import fec_candidates as fec_candidates_service
 from app.services import issue_tagger as issue_tagger_service
+from app.services import retirements as retirements_service
 from app.services import economist_yougov as economist_yougov_service
 from app.services import votehub as votehub_service
 from app.services import earthquakes as earthquakes_service
@@ -152,6 +153,18 @@ async def refresh_candidates():
                     result["house"], result["senate"], result["governors"])
     except Exception as e:
         logger.exception("Candidates refresh failed: %s", e)
+    finally:
+        db.close()
+
+
+async def refresh_retirements():
+    logger.info("Refreshing 2026 House retirements from Wikipedia...")
+    db = SessionLocal()
+    try:
+        n = await retirements_service.refresh_retirements(db)
+        logger.info("Retirements refresh: %d members not seeking re-election", n)
+    except Exception as e:
+        logger.exception("Retirements refresh failed: %s", e)
     finally:
         db.close()
 
@@ -315,6 +328,12 @@ def start_scheduler(interval_hours: int = 1):
         refresh_candidates,
         IntervalTrigger(hours=24),
         id="candidates_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_retirements,
+        IntervalTrigger(hours=24),
+        id="retirements_job",
         replace_existing=True,
     )
     scheduler.add_job(

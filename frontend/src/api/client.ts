@@ -468,6 +468,8 @@ export interface DistrictData {
   incumbent_party: string | null;        // D / R / O
   cook_rating: string | null;
   rating: string;                        // derived full-coverage label
+  open_seat: boolean;                    // incumbent not seeking re-election
+  departing_incumbent: { name: string; party: string | null; reason: string | null } | null;
   poll_count: number;
   latest_poll: DistrictLatestPoll | null;
   candidates: DistrictCandidate[];
