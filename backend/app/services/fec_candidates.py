@@ -106,8 +106,13 @@ async def _fec_paginate(client: httpx.AsyncClient, endpoint: str, params: dict,
 async def fetch_candidate_totals(client: httpx.AsyncClient, office: str) -> dict:
     """{candidate_id: total receipts} for the 2026 cycle (full-election aggregate).
     Used to populate candidate fundraising — a viability/quality signal."""
+    # Sort by receipts desc so that if pagination is ever cut short (rate limit,
+    # timeout), we still capture the highest-funded candidates — the ones that
+    # drive the matchup — rather than an arbitrary slice. (Previously unsorted,
+    # which silently dropped multi-million-dollar frontrunners onto lost pages.)
     rows = await _fec_paginate(client, "/candidates/totals/", {
         "cycle": 2026, "office": office, "election_full": "true", "min_receipts": 1,
+        "sort": "-receipts",
     })
     out: dict[str, float] = {}
     for r in rows:
