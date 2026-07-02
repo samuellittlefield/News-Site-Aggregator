@@ -30,7 +30,7 @@ No upstream APIs are called (everything mocked) — no rate-limit or isolation c
 ## CI
 | File | Change |
 |---|---|
-| `.github/workflows/ci.yml` | new — trigger `pull_request` + `push: [main]`. Job `backend`: `postgres:16-alpine` service, Python setup (pin per `.python-version`), install reqs, `pytest` from `backend/`. Job `frontend`: Node 20, `npm ci`, `npm run build` from `frontend/` |
+| `.github/workflows/ci.yml` | new — trigger `pull_request` + `push: [main]`. Job `backend`: `postgres:16-alpine` service, Python 3.11 (matches Railway's 3.11.x), install reqs, `pytest` from `backend/`. Job `frontend`: Node 20, `npm ci`, `npm run build` from `frontend/` |
 
 ## Data Model / Migration Notes
 None — no schema changes. Test fixtures use `Base.metadata.create_all` directly (deliberately independent of the `alembic-migrations` feature).
@@ -50,7 +50,7 @@ None — no schema changes. Test fixtures use `Base.metadata.create_all` directl
 - [ ] `SOURCES.md`: no change (no source touched)
 
 ## Risks / Rollback
-- **Python version**: CI must pin one version. Recommendation: 3.11 (matches `backend/.python-version` and presumably Railway). If Railway turns out to run 3.9, change one line in the workflow. Code stays 3.9-compatible either way for now.
+- **Python version (resolved)**: Railway runs 3.11 (build logs 2026-07-02; detected 3.11.15, installed 3.11.14) — CI pins `python-version: "3.11"`. Code stays 3.9-compatible syntax until the local venv is rebuilt.
 - **Lifespan gate misses a path** → tests hit live APIs. Mitigated by the autouse respx guard (AC-2): any unmocked request raises loudly.
 - **Rollback**: delete `.github/workflows/ci.yml` and `backend/tests/`; the scheduler gate is inert when the env var is unset.
 

@@ -12,7 +12,7 @@ _Last updated: 2026-07-02_
 
 | # | Item | Slug | Status | Notes |
 |---|---|---|---|---|
-| 1 | Test harness + CI (pytest, GitHub Actions) | `test-harness-ci` | planned | Docs approved; implement after alembic-migrations (Python version decision pending — check Railway) |
+| 1 | Test harness + CI (pytest, GitHub Actions) | `test-harness-ci` | planned | Docs approved; implement after alembic-migrations. CI pins Python 3.11 (Railway runs 3.11.x) |
 | 2 | Adopt Alembic migrations (baseline + deploy hook) | `alembic-migrations` | planned | Docs approved; implement first — includes one-time prod `stamp head` ops step |
 
 ## Next
@@ -27,7 +27,7 @@ _Last updated: 2026-07-02_
 
 | Item | Status | Notes |
 |---|---|---|
-| Resolve Python version: `.python-version` says 3.11, local venv is 3.9, pipeline skill says 3.9 | idea | Decision needed in `test-harness-ci` (CI must pin one); 3.9 is past EOL |
+| Python version cleanup: rebuild local venv on 3.11, drop 3.9 syntax constraint, update pipeline skill | idea | Resolved 2026-07-02: Railway runs 3.11.x; CI pins 3.11. Local venv still 3.9 until rebuilt |
 | Add `FEC_API_KEY` to `backend/.env.example` | idea | Key exists in `.env` but not the example — violates repo convention |
 | Add a README | idea | No README at repo root |
 | Vitest / frontend unit tests | idea | Deferred from `test-harness-ci` non-goals |

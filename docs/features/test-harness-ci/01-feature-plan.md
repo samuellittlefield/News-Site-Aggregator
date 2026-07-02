@@ -33,7 +33,7 @@ The backend is ~7,700 lines across 13 routers and 34 services — including a ca
 5. **Convention updates**: once merged, the stage-4 template's automation notes flip from "once harness exists" to "add to `backend/tests/`", and the pipeline skill's "no test harness yet" bullet gets removed.
 
 ## Open Questions / Risks
-- **Python version mismatch (needs a decision)**: `backend/.python-version` says **3.11**, the local venv is **3.9**, and the pipeline skill's convention says "backend runs 3.9." CI has to pin one. Recommendation: pin CI to 3.11 (matches `.python-version` / presumably Railway) and treat the 3.9 constraint as legacy — but confirm what Railway actually runs before choosing.
+- **Python version (RESOLVED 2026-07-02)**: Railway build logs confirm prod runs **3.11** (build log: detected 3.11.15 from `.python-version`, mise installed 3.11.14 — pin minor version only). CI pins 3.11. The local venv is still 3.9, so code stays 3.9-compatible syntax-wise (`Optional[...]`) until the venv is rebuilt — tracked as a roadmap chore.
 - `lifespan` currently calls `Base.metadata.create_all` and kicks off the startup refresh; TestClient triggers lifespan by default. The env-var gate must cover both, or tests will make live API calls.
 - Interaction with `alembic-migrations` (in-flight sibling feature): if startup switches from `create_all` to `alembic upgrade head`, the test fixture should keep using `Base.metadata.create_all` (fast, always-current) — the two features don't conflict but should land aware of each other.
 
