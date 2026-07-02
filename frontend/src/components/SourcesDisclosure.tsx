@@ -43,22 +43,22 @@ export function SourcesDisclosure() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border-t border-gray-800 pt-6 mt-2">
+    <div className="border-t border-ink/10 pt-6 mt-2">
       <button
         onClick={() => setOpen(o => !o)}
-        className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+        className="text-xs text-ink-muted hover:text-ink transition-colors"
       >
         {open ? "▾ Hide data sources" : "▸ Show data sources"}
       </button>
       {open && (
-        <div className="border border-gray-800 rounded-xl p-4 mt-3 space-y-3">
+        <div className="bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-4 mt-3 space-y-3">
           {SOURCES.map(s => (
             <div key={s.label} className="text-xs leading-relaxed">
               <div className="flex items-baseline justify-between gap-3">
-                <span className="font-semibold text-gray-300">{s.label}</span>
-                <span className="text-[10px] text-gray-600 whitespace-nowrap">{s.cadence}</span>
+                <span className="font-semibold text-ink">{s.label}</span>
+                <span className="text-[10px] text-ink-muted whitespace-nowrap">{s.cadence}</span>
               </div>
-              <p className="text-gray-500">{s.detail}</p>
+              <p className="text-ink-muted">{s.detail}</p>
             </div>
           ))}
         </div>

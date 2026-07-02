@@ -65,7 +65,7 @@ function wikiUrl(name: string): string {
 function ResourceLink({ href, label }: { href: string; label: string }) {
   return (
     <a href={href} target="_blank" rel="noopener noreferrer"
-       className="text-gray-500 hover:text-gray-200 transition-colors">
+       className="text-ink-muted hover:text-ink transition-colors">
       {label} ↗
     </a>
   );
@@ -85,16 +85,16 @@ function CandidateRow({ c, max, state, openSeat }: { c: DistrictCandidate; max: 
     <div className="mb-2.5">
       <div className="flex items-center gap-1.5 text-[13px] mb-0.5">
         <span className="w-2 h-2 rounded-full flex-none" style={{ background: col }} />
-        <span className="text-gray-200">{c.name}</span>
+        <span className="text-ink">{c.name}</span>
         {showInc && (
-          <span className="text-[9px] uppercase tracking-wide text-gray-500 border border-gray-700 rounded px-1">inc</span>
+          <span className="text-[9px] uppercase tracking-wide text-ink-muted border border-ink/20 rounded px-1">inc</span>
         )}
       </div>
       <div className="flex items-center gap-2 pl-3.5">
-        <div className="flex-1 h-1.5 rounded-full bg-gray-800 overflow-hidden">
+        <div className="flex-1 h-1.5 rounded-full bg-black/10 overflow-hidden">
           <div className="h-full rounded-full" style={{ width: `${w}%`, background: col }} />
         </div>
-        <span className="text-[11px] text-gray-500 tabular-nums w-12 text-right">{money(c.fundraising_total)}</span>
+        <span className="text-[11px] text-ink-muted tabular-nums w-12 text-right">{money(c.fundraising_total)}</span>
       </div>
       <div className="flex items-center gap-2.5 pl-3.5 mt-1 text-[10px]">
         {fec && <ResourceLink href={fec} label="FEC" />}
@@ -124,21 +124,21 @@ function DistrictDetail({ d }: { d: DistrictData }) {
   const ratingColor = leanColor(d.pres_margin_2024);
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+    <div className="bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-4">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-lg font-semibold text-white">{d.label}</span>
+        <span className="text-lg font-semibold text-ink">{d.label}</span>
         <span className="text-xs font-medium" style={{ color: ratingColor }}>{leanLabel(d.pres_margin_2024)}</span>
       </div>
-      <div className="text-[11px] text-gray-500 mb-3 flex items-center flex-wrap gap-x-1.5">
+      <div className="text-[11px] text-ink-muted mb-3 flex items-center flex-wrap gap-x-1.5">
         <span>{ratingLabel}</span>
-        {d.cook_rating && <span className="text-gray-700">· Cook</span>}
-        {d.open_seat && <span className="text-amber-500/80">· Open seat</span>}
-        <span className="text-gray-700">· 2026</span>
+        {d.cook_rating && <span className="text-ink-muted">· Cook</span>}
+        {d.open_seat && <span className="text-poll-amber">· Open seat</span>}
+        <span className="text-ink-muted">· 2026</span>
       </div>
 
       {d.open_seat && d.departing_incumbent && (
-        <p className="text-[11px] text-gray-500 mb-3 -mt-1 leading-snug">
-          <span className="text-amber-500/70">Open:</span>{" "}
+        <p className="text-[11px] text-ink-muted mb-3 -mt-1 leading-snug">
+          <span className="text-poll-amber">Open:</span>{" "}
           {d.departing_incumbent.name}
           {d.departing_incumbent.party ? ` (${d.departing_incumbent.party})` : ""}{" "}
           {d.departing_incumbent.reason || "is not seeking re-election"}.
@@ -148,12 +148,12 @@ function DistrictDetail({ d }: { d: DistrictData }) {
       {headline.length > 0 ? (
         <>{headline.map(c => <CandidateRow key={c.name} c={c} max={maxRaise} state={d.state} openSeat={d.open_seat} />)}</>
       ) : (
-        <p className="text-[12px] text-gray-600">No major-party candidates on file yet.</p>
+        <p className="text-[12px] text-ink-muted">No major-party candidates on file yet.</p>
       )}
 
       {others.length > 0 && (
         <div className="mt-1">
-          <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
+          <p className="text-[10px] uppercase tracking-wider text-ink-muted mb-1">
             Also running ({others.length})
           </p>
           <div className="flex flex-wrap gap-x-3 gap-y-0.5">
@@ -161,32 +161,32 @@ function DistrictDetail({ d }: { d: DistrictData }) {
               const href = fecUrl(c.fec_id) ?? newsUrl(c.name, d.state);
               return (
                 <a key={c.name} href={href} target="_blank" rel="noopener noreferrer"
-                   className="text-[11px] text-gray-500 hover:text-gray-300 transition-colors">
+                   className="text-[11px] text-ink-muted hover:text-ink transition-colors">
                   <span className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle" style={{ background: partyColor(c.party) }} />
                   {c.name.split(",")[0]}
                 </a>
               );
             })}
-            {others.length > 8 && <span className="text-[11px] text-gray-600">+{others.length - 8} more</span>}
+            {others.length > 8 && <span className="text-[11px] text-ink-muted">+{others.length - 8} more</span>}
           </div>
         </div>
       )}
 
-      <div className="border-t border-gray-800 my-3" />
+      <div className="border-t border-ink/10 my-3" />
 
       {d.latest_poll && d.latest_poll.margin !== null ? (
-        <p className="text-[11px] text-gray-400">
+        <p className="text-[11px] text-ink-muted">
           Latest poll:{" "}
-          <span style={{ color: d.latest_poll.margin > 0 ? "#60a5fa" : "#f87171" }}>
+          <span style={{ color: d.latest_poll.margin > 0 ? "#2d5390" : "#a83c37" }}>
             {d.latest_poll.margin > 0 ? "D" : "R"}+{Math.abs(d.latest_poll.margin).toFixed(1)}
           </span>
           {d.latest_poll.pollster ? ` · ${d.latest_poll.pollster}` : ""}
         </p>
       ) : (
-        <p className="text-[11px] text-gray-600">No district polls yet — primaries ongoing.</p>
+        <p className="text-[11px] text-ink-muted">No district polls yet — primaries ongoing.</p>
       )}
       {d.house_margin_2024 != null && (
-        <p className="text-[11px] text-gray-600 mt-0.5">
+        <p className="text-[11px] text-ink-muted mt-0.5">
           2024 House result: {leanLabel(d.house_margin_2024)}
         </p>
       )}
@@ -225,7 +225,7 @@ export function DistrictMap({ districts }: Props) {
 
   if (districts.length === 0) {
     return (
-      <div className="w-full rounded-xl border border-gray-800 bg-gray-900 flex items-center justify-center text-gray-600 text-sm" style={{ height: 400 }}>
+      <div className="w-full rounded-2xl border border-glass-border bg-glass-panel backdrop-blur-lg shadow-[0_4px_16px_rgba(74,61,112,0.08)] flex items-center justify-center text-ink-muted text-sm" style={{ height: 400 }}>
         No district data
       </div>
     );
@@ -257,7 +257,7 @@ export function DistrictMap({ districts }: Props) {
         </svg>
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[10px] text-gray-500">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[10px] text-ink-muted">
           {[
             ["Safe D", "#1e3a8a"], ["Lean D", "#60a5fa"], ["Toss-up", "#6b7280"],
             ["Lean R", "#f87171"], ["Safe R", "#991b1b"],
@@ -266,7 +266,7 @@ export function DistrictMap({ districts }: Props) {
               <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: col }} />{label}
             </span>
           ))}
-          <span className="text-gray-700">· colored by 2024 presidential lean · click a district</span>
+          <span className="text-ink-muted">· colored by 2024 presidential lean · click a district</span>
         </div>
       </div>
 

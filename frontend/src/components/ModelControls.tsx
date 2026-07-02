@@ -10,22 +10,22 @@ interface Props {
 
 export function ModelControls({ knobs, onChange, onReset, dirty, loading }: Props) {
   return (
-    <div className="border border-amber-800/40 rounded-lg p-3 bg-amber-950/10 space-y-2.5">
+    <div className="border border-poll-amber-border bg-poll-amber-bg/60 backdrop-blur-lg rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-3 space-y-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-amber-300/90 uppercase tracking-wider">
-          Model controls {loading && <span className="text-gray-600">· recomputing…</span>}
+        <span className="text-[11px] text-poll-amber uppercase tracking-wider">
+          Model controls {loading && <span className="text-ink-muted">· recomputing…</span>}
         </span>
         {dirty && (
-          <button onClick={onReset} className="text-[10px] text-gray-500 hover:text-gray-300">
+          <button onClick={onReset} className="text-[10px] text-ink-muted hover:text-ink">
             reset defaults
           </button>
         )}
       </div>
       {MODEL_KNOB_META.map(m => (
         <label key={m.key} className="block" title={m.help}>
-          <div className="flex items-center justify-between text-[10px] text-gray-500">
+          <div className="flex items-center justify-between text-[10px] text-ink-muted">
             <span>{m.label}</span>
-            <span className="font-mono text-gray-400">{knobs[m.key]}</span>
+            <span className="font-mono text-ink">{knobs[m.key]}</span>
           </div>
           <input
             type="range"
@@ -34,11 +34,11 @@ export function ModelControls({ knobs, onChange, onReset, dirty, loading }: Prop
             step={m.step}
             value={knobs[m.key]}
             onChange={e => onChange({ ...knobs, [m.key]: Number(e.target.value) })}
-            className="w-full h-1 accent-amber-500 cursor-pointer"
+            className="w-full h-1 accent-poll-amber cursor-pointer"
           />
         </label>
       ))}
-      <p className="text-[9px] text-gray-600">
+      <p className="text-[9px] text-ink-muted">
         Live re-runs the simulation. Widen τ / δ to see the probabilities relax toward 50%.
       </p>
     </div>

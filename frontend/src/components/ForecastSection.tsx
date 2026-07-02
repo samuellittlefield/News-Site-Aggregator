@@ -38,36 +38,36 @@ function ChamberCard({ chamber, model, tuned }: { chamber: ChamberForecast; mode
     : null;
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+    <div className="bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs text-gray-400 uppercase tracking-wider">{chamber.title}</p>
+        <p className="text-xs text-ink-muted uppercase tracking-wider">{chamber.title}</p>
         <FavoredTrend marketId={favoredMarketId} />
       </div>
 
       <div className="flex items-baseline gap-3">
-        <span className={`text-4xl font-bold ${demLeads ? "text-blue-400" : "text-red-400"}`}>
+        <span className={`text-4xl font-bold ${demLeads ? "text-poll-blue" : "text-poll-red"}`}>
           {demLeads ? pct(dem) : pct(rep)}
         </span>
-        <span className="text-sm text-gray-400">
+        <span className="text-sm text-ink-muted">
           {demLeads ? "Democratic" : "Republican"} control
         </span>
       </div>
 
       {/* Split probability bar */}
-      <div className="flex h-2 rounded-full overflow-hidden mt-3 bg-gray-800">
-        <div className="bg-blue-500" style={{ width: `${(dem ?? 0) * 100}%` }} />
-        <div className="bg-red-500" style={{ width: `${(rep ?? 0) * 100}%` }} />
+      <div className="flex h-2 rounded-full overflow-hidden mt-3 bg-black/10">
+        <div className="bg-poll-blue-bar" style={{ width: `${(dem ?? 0) * 100}%` }} />
+        <div className="bg-poll-red-bar" style={{ width: `${(rep ?? 0) * 100}%` }} />
       </div>
-      <div className="flex justify-between text-[10px] text-gray-500 mt-1">
+      <div className="flex justify-between text-[10px] text-ink-muted mt-1">
         <span>D {pct(dem)}</span>
         <span>R {pct(rep)}</span>
       </div>
 
       {/* Per-source breakdown (markets) */}
-      <div className="mt-3 space-y-1 border-t border-gray-800 pt-2">
-        <p className="text-[9px] text-gray-600 uppercase tracking-wider">Markets</p>
+      <div className="mt-3 space-y-1 border-t border-ink/10 pt-2">
+        <p className="text-[9px] text-ink-muted uppercase tracking-wider">Markets</p>
         {chamber.sources.length === 0 ? (
-          <p className="text-[10px] text-gray-600">No market data available.</p>
+          <p className="text-[10px] text-ink-muted">No market data available.</p>
         ) : (
           chamber.sources.map(s => (
             <a
@@ -75,7 +75,7 @@ function ChamberCard({ chamber, model, tuned }: { chamber: ChamberForecast; mode
               href={s.url ?? undefined}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-between text-[11px] text-gray-500 hover:text-gray-300"
+              className="flex items-center justify-between text-[11px] text-ink-muted hover:text-ink"
             >
               <span>{PLATFORM_LABEL[s.platform] ?? s.platform}</span>
               <span className="font-mono">D {pct(s.dem_prob)} · R {pct(s.rep_prob)} ↗</span>
@@ -86,19 +86,19 @@ function ChamberCard({ chamber, model, tuned }: { chamber: ChamberForecast; mode
 
       {/* Our experimental in-house model — separate from the market consensus */}
       {model && (
-        <div className="mt-2 border-t border-dashed border-amber-800/40 pt-2">
+        <div className="mt-2 border-t border-dashed border-poll-amber-border pt-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-amber-300/90 flex items-center gap-1.5">
+            <span className="text-[11px] text-poll-amber flex items-center gap-1.5">
               In-house model
-              <span className="text-[8px] uppercase tracking-wide bg-amber-900/40 text-amber-400/90 px-1 py-0.5 rounded">
+              <span className="text-[8px] uppercase tracking-wide bg-poll-amber-bg text-poll-amber px-1 py-0.5 rounded">
                 {tuned ? "tuned" : "experimental"}
               </span>
             </span>
-            <span className="font-mono text-[11px] text-gray-400">
+            <span className="font-mono text-[11px] text-ink-muted">
               D {pct(model.dem_prob)} · R {pct(model.rep_prob)}
             </span>
           </div>
-          <p className="text-[9px] text-gray-600 mt-0.5">
+          <p className="text-[9px] text-ink-muted mt-0.5">
             median {model.median_dem_seats} D seats (90% range {model.p10_dem_seats}–{model.p90_dem_seats})
             {" · "}{model.n_sims.toLocaleString()} sims · {tuned ? "tuned knobs" : "backtested δ"}
           </p>
@@ -121,32 +121,32 @@ function ModelBasis({ chambers }: { chambers: ChamberForecast[] }) {
     c?.model && c.dem_prob != null ? Math.round((c.model.dem_prob - c.dem_prob) * 100) : null;
 
   return (
-    <div className="border-t border-gray-800 pt-3">
-      <button onClick={() => setOpen(o => !o)} className="text-[11px] text-amber-300/80 hover:text-amber-200">
+    <div className="border-t border-ink/10 pt-3">
+      <button onClick={() => setOpen(o => !o)} className="text-[11px] text-poll-amber hover:text-ink">
         {open ? "▾ Hide" : "▸ How the experimental model works"}
       </button>
       {open && (
-        <div className="mt-2 text-[11px] text-gray-400 leading-relaxed space-y-2 border border-gray-800 rounded-lg p-3">
+        <div className="mt-2 text-[11px] text-ink-muted leading-relaxed space-y-2 bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-3">
           <p>
-            <span className="text-gray-300">Inputs.</span> National environment = the live generic-ballot
+            <span className="text-ink">Inputs.</span> National environment = the live generic-ballot
             average, currently a <span className="font-mono">{m.swing_d >= 0 ? "+" : ""}{m.swing_d}</span>-pt
             swing vs the 2024 presidential baseline, applied to every seat.
           </p>
           <p>
-            <span className="text-gray-300">Priors.</span> Each seat blends its last same-office result
+            <span className="text-ink">Priors.</span> Each seat blends its last same-office result
             (House: 2024 · Senate: 2020, or 2022 for FL/OH) with the 2024 presidential lean — so the prior
             carries incumbency, not just partisanship. Seats are then nudged by the
-            <span className="text-gray-300"> FEC fundraising gap</span> between the parties' best-funded candidates.
+            <span className="text-ink"> FEC fundraising gap</span> between the parties' best-funded candidates.
           </p>
           <p>
-            <span className="text-gray-300">Uncertainty.</span> {m.n_sims.toLocaleString()} Monte-Carlo sims
+            <span className="text-ink">Uncertainty.</span> {m.n_sims.toLocaleString()} Monte-Carlo sims
             with a shared national error τ=<span className="font-mono">{m.tau}</span> plus per-seat noise
             δ (House <span className="font-mono">{delta(house)}</span>, Senate <span className="font-mono">{delta(senate)}</span>).
-            All three are <span className="text-gray-300">backtested on actual results</span> — House δ on
+            All three are <span className="text-ink">backtested on actual results</span> — House δ on
             2024 districts, Senate δ on 133 races (2018–24), τ from historical generic-ballot error.
           </p>
           <p>
-            <span className="text-gray-300">Model vs market.</span> House {vsMarket(house)! >= 0 ? "+" : ""}{vsMarket(house)} pts,
+            <span className="text-ink">Model vs market.</span> House {vsMarket(house)! >= 0 ? "+" : ""}{vsMarket(house)} pts,
             Senate {vsMarket(senate)! >= 0 ? "+" : ""}{vsMarket(senate)} pts (model D-prob minus market consensus).
             A gap is an honest disagreement, not an error — the model trusts current fundamentals; the market prices in more.
           </p>
@@ -163,7 +163,7 @@ export function ForecastSection() {
   const { sim, loading: simLoading } = useModelSim(tuning ? knobs : null);
 
   if (loading) {
-    return <div className="h-40 bg-gray-900 rounded-xl animate-pulse" />;
+    return <div className="h-40 bg-glass-panel-nested rounded-2xl animate-pulse" />;
   }
   if (!forecast || forecast.chambers.every(c => c.sources.length === 0)) {
     return null;
@@ -178,15 +178,15 @@ export function ForecastSection() {
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs text-gray-600 uppercase tracking-wider">2026 Control of Congress — Forecast</p>
-          <p className="text-[10px] text-gray-700">
+          <p className="text-xs text-ink-muted uppercase tracking-wider">2026 Control of Congress — Forecast</p>
+          <p className="text-[10px] text-ink-muted">
             Market-implied probabilities · prediction markets refreshed every 10 minutes
           </p>
         </div>
         <button
           onClick={() => setTuning(t => !t)}
           className={`text-[10px] px-2 py-1 rounded border whitespace-nowrap ${
-            tuning ? "border-amber-700/60 text-amber-300/90 bg-amber-950/20" : "border-gray-800 text-gray-500 hover:text-gray-300"
+            tuning ? "border-poll-amber-border text-poll-amber bg-poll-amber-bg" : "border-ink/15 text-ink-muted hover:text-ink"
           }`}
         >
           ⚙ {tuning ? "Tuning model" : "Tune model"}
@@ -211,7 +211,7 @@ export function ForecastSection() {
 
       {/* Model link-outs (cited, not ingested) */}
       {forecast.references.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-gray-600">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-ink-muted">
           <span className="uppercase tracking-wider">Model forecasts:</span>
           {forecast.references.map(r => (
             <a
@@ -220,7 +220,7 @@ export function ForecastSection() {
               target="_blank"
               rel="noopener noreferrer"
               title={r.note}
-              className="text-blue-500/80 hover:text-blue-400"
+              className="text-poll-blue hover:text-poll-blue-bar"
             >
               {r.name} ↗
             </a>
