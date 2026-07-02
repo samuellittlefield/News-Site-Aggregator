@@ -46,8 +46,8 @@ function NetSparkline({ values }: { values: number[] }) {
   const zeroY = h - ((0 - min) / range) * h;
   return (
     <svg width={w} height={h} className="overflow-visible">
-      <line x1="0" y1={zeroY} x2={w} y2={zeroY} stroke="#374151" strokeWidth="1" strokeDasharray="2 2" />
-      <polyline points={pts} fill="none" stroke="#a78bfa" strokeWidth="1.5" />
+      <line x1="0" y1={zeroY} x2={w} y2={zeroY} stroke="#9ca3af" strokeWidth="1" strokeDasharray="2 2" />
+      <polyline points={pts} fill="none" stroke="#9333ea" strokeWidth="1.5" />
     </svg>
   );
 }
@@ -76,7 +76,7 @@ function GradientBar({ topline }: { topline: Record<string, number> }) {
           </div>
         ))}
       </div>
-      <span className="text-xs text-gray-600">Strong ↔ somewhat intensity</span>
+      <span className="text-xs text-ink-muted">Strong ↔ somewhat intensity</span>
     </div>
   );
 }
@@ -85,12 +85,14 @@ function CrosstabGrid({ block }: { block: EconBlock }) {
   const rowLabels = Object.keys(block.rows);
   return (
     <div className="space-y-1">
-      <p className="text-xs text-gray-500 font-medium">{prettyGroup(block.group_line)}</p>
+      <p className="text-xs text-ink-muted font-medium">{prettyGroup(block.group_line)}</p>
       <div className="overflow-x-auto">
         <table className="text-xs border-collapse">
           <thead>
-            <tr className="text-gray-500">
-              <th className="text-left font-medium pr-3 py-1 sticky left-0 bg-gray-950" />
+            {/* sticky label column needs an opaque fill (≈ the glass panel's composite
+                color over the lavender base) so scrolled cells don't bleed through it */}
+            <tr className="text-ink-muted">
+              <th className="text-left font-medium pr-3 py-1 sticky left-0 bg-[#f5f2fb]" />
               {block.columns.map((c, i) => (
                 <th key={i} className="px-2 py-1 text-right font-medium whitespace-nowrap">{c}</th>
               ))}
@@ -98,22 +100,22 @@ function CrosstabGrid({ block }: { block: EconBlock }) {
           </thead>
           <tbody>
             {rowLabels.map((label) => (
-              <tr key={label} className="border-t border-gray-800/50">
-                <td className="text-left text-gray-300 pr-3 py-1 whitespace-nowrap sticky left-0 bg-gray-950">
+              <tr key={label} className="border-t border-ink/10">
+                <td className="text-left text-ink pr-3 py-1 whitespace-nowrap sticky left-0 bg-[#f5f2fb]">
                   {prettyLabel(label)}
                 </td>
                 {block.rows[label].map((v, i) => (
-                  <td key={i} className="px-2 py-1 text-right text-gray-400 tabular-nums">{v}%</td>
+                  <td key={i} className="px-2 py-1 text-right text-ink tabular-nums">{v}%</td>
                 ))}
               </tr>
             ))}
             {Object.keys(block.ns).length > 0 && (
-              <tr className="border-t border-gray-800">
-                <td className="text-left text-gray-600 pr-3 py-1 whitespace-nowrap sticky left-0 bg-gray-950">
+              <tr className="border-t border-ink/15">
+                <td className="text-left text-ink-muted pr-3 py-1 whitespace-nowrap sticky left-0 bg-[#f5f2fb]">
                   Unweighted N
                 </td>
                 {block.columns.map((c, i) => (
-                  <td key={i} className="px-2 py-1 text-right text-gray-600 tabular-nums">
+                  <td key={i} className="px-2 py-1 text-right text-ink-muted tabular-nums">
                     {block.ns[c]?.toLocaleString() ?? ""}
                   </td>
                 ))}
@@ -147,10 +149,10 @@ export function ApprovalSection() {
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
+        <h2 className="text-sm font-semibold text-ink uppercase tracking-wider">
           Approval & Sentiment
         </h2>
-        <span className="text-xs text-gray-600 normal-case font-normal">
+        <span className="text-xs text-ink-muted normal-case font-normal">
           Economist/YouGov · {fmtDate(latest.end_date)}
           {latest.sample_size ? ` · n=${latest.sample_size.toLocaleString()}` : ""}
         </span>
@@ -164,8 +166,8 @@ export function ApprovalSection() {
             onClick={() => { setActiveKey(q.key); setExpanded(false); }}
             className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               activeKey === q.key
-                ? "bg-gray-800 text-white"
-                : "text-gray-500 hover:text-gray-300 bg-gray-900/50"
+                ? "bg-ink text-white"
+                : "text-ink-muted hover:text-ink bg-glass-panel-nested"
             }`}
           >
             {q.label}
@@ -173,20 +175,20 @@ export function ApprovalSection() {
         ))}
       </div>
 
-      <div className="border border-gray-800 rounded-xl p-4 flex flex-col sm:flex-row gap-6 sm:items-center">
+      <div className="bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-4 flex flex-col sm:flex-row gap-6 sm:items-center">
         {/* Headline */}
         <div className="flex items-center gap-4">
           {net != null && (
             <div>
-              <div className={`text-3xl font-bold ${net >= 0 ? "text-green-400" : "text-red-400"}`}>
+              <div className={`text-3xl font-bold ${net >= 0 ? "text-poll-positive" : "text-poll-red"}`}>
                 {net > 0 ? "+" : ""}{net}
               </div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Net</div>
+              <div className="text-xs text-ink-muted uppercase tracking-wide">Net</div>
             </div>
           )}
-          <div className="text-sm text-gray-400 leading-relaxed">
-            {pos && <div><span className="text-green-400 font-semibold">{posVal}%</span> {prettyLabel(pos).toLowerCase()}</div>}
-            {neg && <div><span className="text-red-400 font-semibold">{negVal}%</span> {prettyLabel(neg).toLowerCase()}</div>}
+          <div className="text-sm text-ink-muted leading-relaxed">
+            {pos && <div><span className="text-poll-positive font-semibold">{posVal}%</span> {prettyLabel(pos).toLowerCase()}</div>}
+            {neg && <div><span className="text-poll-red font-semibold">{negVal}%</span> {prettyLabel(neg).toLowerCase()}</div>}
           </div>
         </div>
 
@@ -194,7 +196,7 @@ export function ApprovalSection() {
         {netSeries.length >= 2 && (
           <div className="flex flex-col gap-1">
             <NetSparkline values={netSeries} />
-            <span className="text-xs text-gray-600">Net over last {netSeries.length} polls</span>
+            <span className="text-xs text-ink-muted">Net over last {netSeries.length} polls</span>
           </div>
         )}
 
@@ -204,14 +206,14 @@ export function ApprovalSection() {
         {/* Breakdown by party */}
         {party && (
           <div className="flex gap-4 sm:ml-auto">
-            {([["Dem", party.dem, "bg-blue-500"], ["Ind", party.ind, "bg-purple-400"], ["Rep", party.rep, "bg-red-500"]] as const).map(
+            {([["Dem", party.dem, "bg-poll-blue-bar"], ["Ind", party.ind, "bg-poll-purple-bar"], ["Rep", party.rep, "bg-poll-red-bar"]] as const).map(
               ([label, val, color]) => (
                 <div key={label} className="flex flex-col items-center gap-1 w-12">
-                  <div className="h-16 w-5 bg-gray-800 rounded relative overflow-hidden flex items-end">
+                  <div className="h-16 w-5 bg-black/10 rounded relative overflow-hidden flex items-end">
                     <div className={`${color} w-full`} style={{ height: `${val}%` }} />
                   </div>
-                  <span className="text-sm font-semibold text-white">{val}%</span>
-                  <span className="text-xs text-gray-500">{label}</span>
+                  <span className="text-sm font-semibold text-ink">{val}%</span>
+                  <span className="text-xs text-ink-muted">{label}</span>
                 </div>
               )
             )}
@@ -224,15 +226,15 @@ export function ApprovalSection() {
         <div className="space-y-3">
           <button
             onClick={() => setExpanded((e) => !e)}
-            className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+            className="text-xs text-ink-muted hover:text-ink transition-colors"
           >
             {expanded ? "▾ Hide full crosstab" : "▸ Show full demographic crosstab"}
           </button>
           {expanded && (
-            <div className="border border-gray-800 rounded-xl p-4 space-y-5">
+            <div className="bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-4 space-y-5">
               {/* Show the survey wording only once it's the readable (spaced) form. */}
               {crosstab.question_text && crosstab.question_text.includes(" ") && (
-                <p className="text-xs text-gray-400 italic">“{crosstab.question_text}”</p>
+                <p className="text-xs text-ink-muted italic">“{crosstab.question_text}”</p>
               )}
               {crosstab.blocks.map((b, i) => <CrosstabGrid key={i} block={b} />)}
               {crosstab.source_url && (
@@ -240,7 +242,7 @@ export function ApprovalSection() {
                   href={crosstab.source_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block text-xs text-purple-400 hover:text-purple-300"
+                  className="inline-block text-xs text-poll-purple hover:text-poll-purple-bar"
                 >
                   Source: Economist/YouGov tab report (PDF) ↗
                 </a>

@@ -6,7 +6,7 @@ export function VoteHubApprovalCard() {
   const { questions } = useEconQuestions();
 
   if (loading) {
-    return <div className="h-28 bg-gray-900 rounded-xl animate-pulse" />;
+    return <div className="h-28 bg-glass-panel-nested rounded-2xl animate-pulse" />;
   }
   const avg = data?.average ?? null;
   if (!avg) return null;
@@ -19,23 +19,23 @@ export function VoteHubApprovalCard() {
     .map(p => (p.approve as number) - (p.disapprove as number));
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+    <div className="bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-4">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs text-gray-600 uppercase tracking-wider">Trump Approval — VoteHub Live Average</p>
-        <p className="text-[10px] text-gray-600">{avg.n_polls} polls · last {avg.window_days} days</p>
+        <p className="text-xs text-ink-muted uppercase tracking-wider">Trump Approval — VoteHub Live Average</p>
+        <p className="text-[10px] text-ink-muted">{avg.n_polls} polls · last {avg.window_days} days</p>
       </div>
       <div className="flex items-end justify-between gap-4">
         <div>
           <div className="flex items-baseline gap-3">
-            <span className={`text-4xl font-bold ${avg.net < 0 ? "text-red-400" : "text-emerald-400"}`}>
+            <span className={`text-4xl font-bold ${avg.net < 0 ? "text-poll-red" : "text-poll-positive"}`}>
               {avg.net > 0 ? "+" : ""}{avg.net.toFixed(1)}
             </span>
-            <span className="text-sm text-gray-400">
+            <span className="text-sm text-ink-muted">
               {avg.approve.toFixed(1)}% approve · {avg.disapprove.toFixed(1)}% disapprove
             </span>
           </div>
           {econNet !== null && (
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-xs text-ink-muted mt-1">
               Cross-check: Economist/YouGov net {econNet > 0 ? "+" : ""}{econNet.toFixed(1)}
               {" · "}delta {(avg.net - econNet) > 0 ? "+" : ""}{(avg.net - econNet).toFixed(1)}
             </p>
@@ -44,7 +44,7 @@ export function VoteHubApprovalCard() {
         {nets.length >= 2 && (
           <div className="text-right">
             <MiniSparkline values={nets} width={160} height={40} />
-            <p className="text-[10px] text-gray-600 mt-0.5">net, last {nets.length} polls</p>
+            <p className="text-[10px] text-ink-muted mt-0.5">net, last {nets.length} polls</p>
           </div>
         )}
       </div>
