@@ -47,3 +47,10 @@ No migration, no route, no data touched — rollback is reverting the component 
 
 ## Test Plan Pointer
 See `04-test-cases.md`.
+
+## Shipped — Delta from Plan
+PR #4 (`78b828d`, merged `26f93ce`), 2026-07-02. Code found two things this plan missed while implementing — noting here so the doc matches what actually shipped:
+- `ModelControls.tsx` (Polling-only, rendered by `ForecastSection`) also needed retinting — wasn't in the original 8-component list.
+- Two hardcoded SVG accent colors (not Tailwind classes, so they didn't show up in the grep this plan was built from) were still tuned for the dark background and needed manual retuning.
+
+Both are in-scope per the feature plan's intent (full Polling page retheme) — just not caught by a class-name grep. Worth remembering for future passes: hardcoded hex in SVG/inline styles won't surface the same way `gray-*`/`red-*`/`blue-*` class greps do.

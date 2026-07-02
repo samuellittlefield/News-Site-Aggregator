@@ -86,5 +86,7 @@ All cases are manual — no `pytest`/`vitest` harness exists in this repo yet. E
 - `frontend/src/index.css`'s global `body` styles — confirmed untouched, other pages keep the dark theme.
 
 ## Sign-off
-- [ ] All test cases pass
-- [ ] Samuel has reviewed results before merge to main
+- [x] All test cases pass
+- [x] Samuel has reviewed results before merge to main
+
+**Shipped:** PR #4 (`78b828d`, merged `26f93ce`), 2026-07-02. TC-7 confirmed directly from the diff (Dashboard/other pages untouched). TC-5/TC-6 (contrast, blur perf) rely on Code's pre-merge verification, not re-checked independently in this session.

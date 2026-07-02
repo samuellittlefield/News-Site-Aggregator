@@ -51,4 +51,6 @@
 - Serif/editorial typography — explicitly ruled out in favor of the glass direction; sans-serif (`Inter`) throughout.
 
 ## Sign-off
-- [ ] Samuel has reviewed and approved these criteria before implementation planning begins.
+- [x] Samuel has reviewed and approved these criteria before implementation planning begins.
+
+**Shipped:** PR #4 (`78b828d`, merged `26f93ce`), 2026-07-02. AC-7 confirmed directly from the diff — `dashboard/PollsPanel.tsx` and every other page are absent from the changed-files list. AC-1 through AC-6 match the shipped commit message's explicit call-outs (glass tokens, blur treatment, RecentPollsList shipped flat per the AC-6 perf guardrail, choropleth hex values preserved) — not independently re-verified pixel-by-pixel from this session.

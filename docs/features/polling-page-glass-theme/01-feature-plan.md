@@ -1,6 +1,6 @@
 # Feature Plan: Polling Page Liquid Glass Theme
 
-**Slug:** `polling-page-glass-theme` &nbsp; **Owner:** Samuel &nbsp; **Status:** Draft &nbsp; **Date:** 2026-07-02
+**Slug:** `polling-page-glass-theme` &nbsp; **Owner:** Samuel &nbsp; **Status:** Shipped (PR #4, `78b828d`, merged `26f93ce`) &nbsp; **Date:** 2026-07-02
 
 ## Problem / Goal
 The Polling page's dark mode reads flat and generic — it's Tailwind's stock `gray-950`/`gray-900` neutral scale with zero custom tokens, so it looks like any other default Tailwind dashboard. Retheme it to a distinct visual identity: a light lavender base with translucent "liquid glass" panels (low-opacity, blurred, softly bordered), replacing the current flat dark neutral surfaces — while keeping the existing red/blue party-color data encoding legible and un-clashing.
