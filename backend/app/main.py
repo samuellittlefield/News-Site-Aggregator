@@ -77,9 +77,15 @@ async def lifespan(app: FastAPI):
     # before uvicorn). Schema authority is now migrations; remove this create_all
     # in a follow-up once the first migrated deploy is confirmed healthy.
     Base.metadata.create_all(bind=engine)
-    start_scheduler(interval_hours=1)
-    # Fire a full refresh immediately so the feed is fresh on every deploy
-    asyncio.create_task(_startup_refresh())
+    # Tests run under TestClient (which triggers lifespan): DISABLE_SCHEDULER=1
+    # suppresses both the recurring scheduler and the startup refresh so the suite
+    # never fires background jobs or live upstream calls.
+    if os.getenv("DISABLE_SCHEDULER") == "1":
+        logger.info("DISABLE_SCHEDULER=1 — skipping scheduler and startup refresh")
+    else:
+        start_scheduler(interval_hours=1)
+        # Fire a full refresh immediately so the feed is fresh on every deploy
+        asyncio.create_task(_startup_refresh())
     yield
 
 

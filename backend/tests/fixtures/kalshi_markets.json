@@ -1,0 +1,65 @@
+{
+  "CONTROLH": {
+    "markets": [
+      {
+        "ticker": "CONTROLH-2026-D",
+        "title": "Will Democrats win control of the House in 2026?",
+        "yes_sub_title": "Democratic",
+        "last_price_dollars": "0.55",
+        "yes_bid_dollars": "0.54",
+        "yes_ask_dollars": "0.56",
+        "volume_24h_fp": "50000",
+        "liquidity_dollars": "12000.50",
+        "close_time": "2026-11-03T23:59:00Z"
+      },
+      {
+        "ticker": "CONTROLH-2026-R",
+        "title": "Will Republicans win control of the House in 2026?",
+        "yes_sub_title": "Republican",
+        "last_price_dollars": "0.45",
+        "yes_bid_dollars": "0.44",
+        "yes_ask_dollars": "0.46",
+        "volume_24h_fp": "48000",
+        "liquidity_dollars": "11000.00",
+        "close_time": "2026-11-03T23:59:00Z"
+      },
+      {
+        "ticker": "CONTROLH-2028-D",
+        "title": "Will Democrats win control of the House in 2028?",
+        "yes_sub_title": "Democratic",
+        "last_price_dollars": "0.50",
+        "yes_bid_dollars": "0.48",
+        "yes_ask_dollars": "0.52",
+        "volume_24h_fp": "120",
+        "liquidity_dollars": "300.00",
+        "close_time": "2028-11-07T23:59:00Z"
+      }
+    ]
+  },
+  "CONTROLS": {
+    "markets": [
+      {
+        "ticker": "CONTROLS-2026-D",
+        "title": "Will Democrats win control of the Senate in 2026?",
+        "yes_sub_title": "Democratic",
+        "last_price_dollars": "0.40",
+        "yes_bid_dollars": "0.39",
+        "yes_ask_dollars": "0.41",
+        "volume_24h_fp": "42000",
+        "liquidity_dollars": "9000.00",
+        "close_time": "2026-11-03T23:59:00Z"
+      },
+      {
+        "ticker": "CONTROLS-2026-R",
+        "title": "Will Republicans win control of the Senate in 2026?",
+        "yes_sub_title": "Republican",
+        "last_price_dollars": "0.60",
+        "yes_bid_dollars": "0.59",
+        "yes_ask_dollars": "0.61",
+        "volume_24h_fp": "41000",
+        "liquidity_dollars": "8800.00",
+        "close_time": "2026-11-03T23:59:00Z"
+      }
+    ]
+  }
+}

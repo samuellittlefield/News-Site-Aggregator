@@ -2,8 +2,9 @@
 TEMPLATE: Test Cases
 File location once approved: news-site/docs/features/<slug>/04-test-cases.md
 Every case maps to an AC ID from 02-acceptance-criteria.md.
-NOTE: this repo has no test harness configured yet (no pytest/vitest found). Cases below are written
-to be runnable manually today, and portable to automated tests once a harness exists.
+NOTE: backend has a pytest harness (`backend/tests/`, Postgres-backed, respx-mocked upstreams; see
+`backend/README.md` and `docs/features/test-harness-ci/`). Backend cases should be added there.
+Frontend still has no harness (Vitest is a future follow-up), so frontend cases stay manual for now.
 -->
 
 # Test Cases: <Feature Name>
@@ -25,7 +26,7 @@ to be runnable manually today, and portable to automated tests once a harness ex
   1. ...
   2. ...
 - **Expected Result:** ...
-- **Automation note:** target `backend/tests/` with pytest once harness exists; until then, run manually via `uvicorn` + curl or the FastAPI docs UI.
+- **Automation note:** add to `backend/tests/` (pytest harness exists — Postgres `db`/`client` fixtures, respx-mocked upstreams; see `backend/README.md`).
 
 ### TC-2 — <title> (covers AC-1)
 - **Type:** ...
