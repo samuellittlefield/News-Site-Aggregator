@@ -14,6 +14,10 @@ if config.config_file_name is not None:
 
 db_url = os.getenv("DATABASE_URL")
 if db_url:
+    # Railway (and some other platforms) emit postgres:// — SQLAlchemy requires
+    # postgresql://. Mirror the rewrite in app/database.py (AC-5).
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
     config.set_main_option("sqlalchemy.url", db_url)
 
 from app.models import Base  # noqa: E402

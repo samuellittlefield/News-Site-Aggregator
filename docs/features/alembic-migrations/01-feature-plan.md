@@ -1,6 +1,8 @@
 # Feature Plan: Adopt Alembic Migrations
 
-**Slug:** `alembic-migrations` &nbsp; **Owner:** Samuel &nbsp; **Status:** Approved — ready for implementation &nbsp; **Date:** 2026-07-02
+**Slug:** `alembic-migrations` &nbsp; **Owner:** Samuel &nbsp; **Status:** Shipped (2026-07-07) &nbsp; **Date:** 2026-07-02
+
+> **Shipped note (2026-07-07):** Baseline `1cfc95e31a13` captures the current schema. The read-only prod drift check found 8 benign pre-existing drifts (legacy `news_articles`/`regional_weather`/`service_status` + `trends.sources_list`); reconciled via **Plan A** (models updated to describe prod's reality, incl. keeping the `news_articles (category, url)` unique constraint), so baseline ≡ prod ≡ models. Prod `stamp head` done; `Procfile` runs `alembic upgrade head`; `create_all` kept as a release-1 safety net.
 
 ## Problem / Goal
 Alembic is installed and fully configured (`alembic.ini`, `env.py` wired to `Base.metadata` and `DATABASE_URL`) but `alembic/versions/` is empty — the schema has only ever been managed by `Base.metadata.create_all()` in `lifespan`. `create_all` creates missing tables but never alters existing ones: add a column to a model and the production Postgres on Railway silently won't have it until a query 500s at runtime. Goal: baseline the current schema as migration 001, switch deploys to `alembic upgrade head`, and make "generate a migration" a standard step in every future feature that touches `models.py`.

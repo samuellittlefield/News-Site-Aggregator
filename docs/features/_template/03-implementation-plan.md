@@ -44,6 +44,7 @@ Order of work — what has to land before what (e.g. migration → service → r
 ## Documentation Updates
 - [ ] `SOURCES.md` updated if this adds/changes a data source
 - [ ] `.env.example` updated if new env vars/secrets are needed
+- [ ] Alembic migration generated + reviewed (required if `models.py` changed) — see `backend/README.md`
 
 ## Risks / Rollback
 What could go wrong, and how to back it out (feature flag, revert migration, disable scheduler job).
