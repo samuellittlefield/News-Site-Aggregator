@@ -73,6 +73,9 @@ async def _startup_refresh():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Release-1 safety net behind Alembic (Procfile runs `alembic upgrade head`
+    # before uvicorn). Schema authority is now migrations; remove this create_all
+    # in a follow-up once the first migrated deploy is confirmed healthy.
     Base.metadata.create_all(bind=engine)
     start_scheduler(interval_hours=1)
     # Fire a full refresh immediately so the feed is fresh on every deploy

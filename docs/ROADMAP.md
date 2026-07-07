@@ -12,8 +12,8 @@ _Last updated: 2026-07-02_
 
 | # | Item | Slug | Status | Notes |
 |---|---|---|---|---|
-| 1 | Test harness + CI (pytest, GitHub Actions) | `test-harness-ci` | planned | Docs approved; implement after alembic-migrations. CI pins Python 3.11 (Railway runs 3.11.x) |
-| 2 | Adopt Alembic migrations (baseline + deploy hook) | `alembic-migrations` | planned | Docs approved; implement first — includes one-time prod `stamp head` ops step |
+| 1 | Test harness + CI (pytest, GitHub Actions) | `test-harness-ci` | in progress | Implementing now (after alembic-migrations). CI pins Python 3.11 (Railway runs 3.11.x) |
+| 2 | Adopt Alembic migrations (baseline + deploy hook) | `alembic-migrations` | shipped | Baseline `1cfc95e31a13` = prod (drift reconciled via Plan A into models); prod `stamp head` done 2026-07-07; Procfile runs `upgrade head`. `create_all` kept as release-1 safety net (remove in follow-up) |
 
 ## Next
 

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text, Date, Float, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text, Date, Float, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, declarative_base
 
@@ -33,7 +33,9 @@ class Trend(Base):
     rank_velocity = Column(Integer, default=0, nullable=False)
     source = Column(String, default="rss", nullable=False)
     signal_score = Column(Float, default=0.0, nullable=False)
-    sources_list = Column(JSONB, default=list, nullable=False)
+    # Prod has this nullable with a '[]'::jsonb server default (legacy); the app
+    # always populates it via default=list. Reflects prod (alembic-migrations drift check).
+    sources_list = Column(JSONB, default=list, nullable=True, server_default=text("'[]'::jsonb"))
     trend_window = Column(String, default="24h", nullable=True)
     cluster_id = Column(Integer, ForeignKey("trend_clusters.id", ondelete="SET NULL"), nullable=True)
     geo = Column(String, default="US")
@@ -117,8 +119,12 @@ class WikiPageView(Base):
 
 class NewsArticle(Base):
     __tablename__ = "news_articles"
+    # Legacy table: predates later model conventions. These reflect prod's actual
+    # schema (id has no redundant ix index; fetched_at is NOT NULL DEFAULT now();
+    # a (category, url) unique dedup exists). See alembic-migrations drift check.
+    __table_args__ = (UniqueConstraint("category", "url", name="news_articles_category_url_key"),)
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=False)
     category = Column(String, nullable=False)
     title = Column(String, nullable=False)
     url = Column(String, nullable=True)
@@ -126,13 +132,18 @@ class NewsArticle(Base):
     published_at = Column(DateTime(timezone=True), nullable=True)
     description = Column(Text, nullable=True)
     ai_summary = Column(Text, nullable=True)
-    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    fetched_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()"),
+        default=lambda: datetime.now(timezone.utc),
+    )
 
 
 class RegionalWeather(Base):
     __tablename__ = "regional_weather"
 
-    id = Column(Integer, primary_key=True, index=True)
+    # Legacy table: id has no redundant ix index; fetched_at is NOT NULL DEFAULT
+    # now() in prod. Reflects prod's actual schema (alembic-migrations drift check).
+    id = Column(Integer, primary_key=True, index=False)
     region = Column(String, nullable=False, unique=True)
     city = Column(String, nullable=False)
     latitude = Column(Float, nullable=False)
@@ -141,19 +152,27 @@ class RegionalWeather(Base):
     temp_min_f = Column(Float, nullable=True)
     precipitation_mm = Column(Float, nullable=True)
     condition = Column(String, nullable=True)
-    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    fetched_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()"),
+        default=lambda: datetime.now(timezone.utc),
+    )
 
 
 class ServiceStatus(Base):
     __tablename__ = "service_status"
 
-    id = Column(Integer, primary_key=True, index=True)
+    # Legacy table: id has no redundant ix index; fetched_at is NOT NULL DEFAULT
+    # now() in prod. Reflects prod's actual schema (alembic-migrations drift check).
+    id = Column(Integer, primary_key=True, index=False)
     name = Column(String, nullable=False, unique=True)
     indicator = Column(String, nullable=False, default="none")   # none | minor | major | critical
     description = Column(String, nullable=True)
     icon = Column(String, nullable=True)
     page_url = Column(String, nullable=True)
-    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    fetched_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()"),
+        default=lambda: datetime.now(timezone.utc),
+    )
 
 
 class Candidate(Base):
