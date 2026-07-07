@@ -1,6 +1,8 @@
 # Feature Plan: Test Harness + CI
 
-**Slug:** `test-harness-ci` &nbsp; **Owner:** Samuel &nbsp; **Status:** Approved — ready for implementation &nbsp; **Date:** 2026-07-02
+**Slug:** `test-harness-ci` &nbsp; **Owner:** Samuel &nbsp; **Status:** Shipped (2026-07-07) &nbsp; **Date:** 2026-07-02
+
+> **Shipped note (2026-07-07):** `backend/tests/` with a Postgres-backed `db`/`client` fixture pair (transactional rollback via `join_transaction_mode="create_savepoint"`, so service `commit()`s roll back), an autouse respx network guard, and `DISABLE_SCHEDULER=1` gating in `lifespan`. Seed suite (8 tests): forecast determinism, kalshi upsert idempotency + deactivation, router smoke, scheduler-off + unmocked-HTTP guards — all green locally, incl. a fully secretless run (AC-7). `.github/workflows/ci.yml` runs backend pytest (Postgres service, Python 3.11) + frontend build on PR/push. TC-7/TC-8 (CI red-check) to verify on the first real PR.
 
 ## Problem / Goal
 The backend is ~7,700 lines across 13 routers and 34 services — including a calibrated Monte-Carlo forecast model, FEC pagination with retry logic, and upsert-based ingestion for ~20 tables — and none of it has automated tests. There is no `.github/` directory, so nothing runs on push or PR. Every test-case doc the feature pipeline produces (stage 4) is a manual curl/click-through script that goes stale the moment the code changes. Goal: a pytest harness with a small set of seed tests covering the highest-risk logic, plus a GitHub Actions workflow that runs them (and a frontend type-check/build) on every PR.
