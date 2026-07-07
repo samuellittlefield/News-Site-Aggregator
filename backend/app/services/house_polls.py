@@ -11,6 +11,7 @@ Also seeds the CompetitiveDistrict table with Cook Political Report 2026 ratings
 Pollster grades loaded from the vendored FiveThirtyEight pollster-ratings CSV
 (frozen at 2025-02-25 — 538's live feeds are dead), with the GitHub archive as fallback.
 """
+import collections
 import csv
 import hashlib
 import io
@@ -311,91 +312,371 @@ async def fetch_generic_ballot(db: Session) -> list[dict]:
 
 
 # ── District polls from Wikipedia ────────────────────────────────────────────
+#
+# 2026 has no standalone per-district articles. Each state's races live on one
+# consolidated page ("2026 United States House of Representatives elections in
+# <State>") with a `District N → General election → Polling` subsection tree.
+# We resolve that subsection by walking the page's section list and fetch only
+# that subsection's wikitext. Critically, some districts (e.g. NY-17, NE-2) have
+# a `Polling` subsection nested under a *primary* section instead — that's
+# primary horse-race polling, not general-election data — so the lookup requires
+# `Polling` to be a descendant of `General election` (AC-2b).
 
-def _wiki_page_for_district(state: str, district: int) -> str:
-    state_names = {
-        "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
-        "CA": "California", "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware",
-        "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho",
-        "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas",
-        "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
-        "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi",
-        "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada",
-        "NH": "New_Hampshire", "NJ": "New_Jersey", "NM": "New_Mexico", "NY": "New_York",
-        "NC": "North_Carolina", "ND": "North_Dakota", "OH": "Ohio", "OK": "Oklahoma",
-        "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode_Island", "SC": "South_Carolina",
-        "SD": "South_Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
-        "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West_Virginia",
-        "WI": "Wisconsin", "WY": "Wyoming",
-    }
-    ordinal = {1:"1st",2:"2nd",3:"3rd"}.get(district, f"{district}th")
-    state_name = state_names.get(state, state)
-    return f"2026_United_States_House_of_Representatives_election_in_{state_name}%27s_{ordinal}_congressional_district"
+STATE_NAMES = {
+    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
+    "CA": "California", "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware",
+    "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho",
+    "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas",
+    "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
+    "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi",
+    "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada",
+    "NH": "New_Hampshire", "NJ": "New_Jersey", "NM": "New_Mexico", "NY": "New_York",
+    "NC": "North_Carolina", "ND": "North_Dakota", "OH": "Ohio", "OK": "Oklahoma",
+    "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode_Island", "SC": "South_Carolina",
+    "SD": "South_Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
+    "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West_Virginia",
+    "WI": "Wisconsin", "WY": "Wyoming",
+}
+
+_PARTY_SUFFIX_RE = re.compile(r"\(([RDI])\)\s*$")
 
 
-def _extract_polls_from_wikitext(wikitext: str, state: str, district: int) -> list[dict]:
-    """Try to extract poll table rows from district wikitext."""
-    polls = []
-    if "poll" not in wikitext.lower() and "%" not in wikitext:
+def _state_wiki_page(state: str) -> str:
+    """State abbreviation → the consolidated 2026 House elections page title."""
+    state_name = STATE_NAMES.get(state, state)
+    return f"2026_United_States_House_of_Representatives_elections_in_{state_name}"
+
+
+def _expand_templates(s: str) -> str:
+    """Collapse {{template|...|value}} to its last parameter (or ''). Keeps the
+    displayed value of wrappers like {{highlight|45%}} / {{nowrap|...}} while
+    discarding styling templates like {{party color cell|Republican}} down to a
+    harmless token."""
+    prev = None
+    while prev != s:
+        prev = s
+        s = re.sub(
+            r"\{\{([^{}]*)\}\}",
+            lambda m: m.group(1).split("|")[-1] if "|" in m.group(1) else "",
+            s,
+        )
+    return s
+
+
+def _clean_wiki(s: str) -> str:
+    s = re.sub(r"<ref[^>]*>.*?</ref>", "", s, flags=re.DOTALL)
+    s = re.sub(r"<ref[^>]*/?>", "", s)
+    s = _expand_templates(s)
+    s = re.sub(r"<br\s*/?>", " ", s)
+    s = re.sub(r"<[^>]+>", "", s)
+    s = re.sub(r"\[\[([^\]|]+\|)?([^\]]+)\]\]", r"\2", s)  # [[Link|Text]] -> Text
+    s = re.sub(r"'''+|''", "", s)                          # bold / italic
+    return s
+
+
+def _cell_content(cell: str) -> str:
+    """Clean a single table cell and drop any leading `attr | content` style
+    prefix (a single `|` separates HTML attributes from cell content)."""
+    s = _clean_wiki(cell)
+    if "|" in s:
+        s = s.rsplit("|", 1)[-1]
+    return s.strip()
+
+
+def _clean_heading(line: str) -> str:
+    """Section `line` values from the API are HTML — strip to plain text."""
+    return _clean_wiki(line).strip()
+
+
+async def _fetch_state_sections(client: httpx.AsyncClient, state: str) -> list[dict]:
+    """Fetch a state page's section list via action=parse&prop=sections.
+
+    Returns [] and logs a warning on a non-200 status or a MediaWiki `error`
+    body (e.g. missingtitle) — the exact failure the old code swallowed silently
+    (AC-4)."""
+    page = _state_wiki_page(state)
+    try:
+        resp = await client.get(WIKI_API, params={
+            "action": "parse", "page": page,
+            "prop": "sections", "format": "json",
+        })
+    except Exception as e:
+        logger.warning("District polls: sections fetch failed for %s (%s): %s", state, page, e)
+        return []
+    if resp.status_code != 200:
+        logger.warning("District polls: sections fetch for %s returned HTTP %s", state, resp.status_code)
+        return []
+    try:
+        data = resp.json()
+    except ValueError as e:
+        logger.warning("District polls: non-JSON sections body for %s: %s", state, e)
+        return []
+    if "error" in data:
+        code = data.get("error", {}).get("code", "unknown")
+        logger.warning("District polls: Wikipedia error for %s (%s): %s", state, page, code)
+        return []
+    return data.get("parse", {}).get("sections", [])
+
+
+def _find_polling_section(sections: list[dict], district: int) -> Optional[int]:
+    """Resolve `District {district} → General election → Polling` to a section
+    index by walking the section tree.
+
+    Returns None (a normal skip, AC-7) if the district has no general-election
+    Polling subsection yet — including the AC-2b case where only a *primary*
+    section has a Polling child. Never returns a primary Polling section's index.
+    """
+    n = len(sections)
+    district_re = re.compile(rf"^District\s+{district}\b", re.IGNORECASE)
+
+    # 1. Locate the `District {district}` heading.
+    dist_i = dist_level = None
+    for i, sec in enumerate(sections):
+        if district_re.match(_clean_heading(sec.get("line", ""))):
+            dist_i = i
+            dist_level = sec.get("toclevel", 1)
+            break
+    if dist_i is None:
+        return None
+
+    # 2. District block = up to the next heading at the district's level or higher.
+    block_end = n
+    for i in range(dist_i + 1, n):
+        if sections[i].get("toclevel", 1) <= dist_level:
+            block_end = i
+            break
+
+    # 3. Within the block, find `General election`.
+    ge_i = ge_level = None
+    for i in range(dist_i + 1, block_end):
+        if re.match(r"^General election\b", _clean_heading(sections[i].get("line", "")), re.IGNORECASE):
+            ge_i = i
+            ge_level = sections[i].get("toclevel", 2)
+            break
+    if ge_i is None:
+        return None
+
+    # 4. General-election descendants = up to the next heading at its level or
+    #    higher (this is what excludes a primary section's own Polling child).
+    ge_end = block_end
+    for i in range(ge_i + 1, block_end):
+        if sections[i].get("toclevel", 1) <= ge_level:
+            ge_end = i
+            break
+
+    # 5. Find `Polling` strictly within General election's descendants.
+    for i in range(ge_i + 1, ge_end):
+        if re.match(r"^Polling\b", _clean_heading(sections[i].get("line", "")), re.IGNORECASE):
+            try:
+                return int(sections[i].get("index"))
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+async def _fetch_section_wikitext(client: httpx.AsyncClient, page: str, section_idx: int) -> str:
+    """Fetch just one section's wikitext by index. Logs a warning on failure."""
+    try:
+        resp = await client.get(WIKI_API, params={
+            "action": "parse", "page": page,
+            "section": str(section_idx), "prop": "wikitext", "format": "json",
+        })
+        if resp.status_code != 200:
+            logger.warning("District polls: section %s of %s returned HTTP %s", section_idx, page, resp.status_code)
+            return ""
+        data = resp.json()
+        if "error" in data:
+            logger.warning("District polls: Wikipedia error fetching section %s of %s", section_idx, page)
+            return ""
+        return data.get("parse", {}).get("wikitext", {}).get("*", "")
+    except Exception as e:
+        logger.warning("District polls: section %s fetch failed for %s: %s", section_idx, page, e)
+        return ""
+
+
+def _parse_section_table(wikitext: str) -> tuple[list[str], list[list[str]]]:
+    """Parse the first wikitable in a section into (headers, rows-of-cells)."""
+    headers: list[str] = []
+    rows: list[list[str]] = []
+    current: Optional[list[str]] = None
+    in_table = False
+    for raw in wikitext.split("\n"):
+        line = raw.strip()
+        if line.startswith("{|"):
+            in_table = True
+            continue
+        if not in_table:
+            continue
+        if line.startswith("|}"):
+            break  # end of first table
+        if line.startswith("!"):
+            for cell in re.split(r"!!|\|\|", line.lstrip("!")):
+                headers.append(_cell_content(cell))
+            continue
+        if line.startswith("|-"):
+            if current is not None:
+                rows.append(current)
+            current = []
+            continue
+        if line.startswith("|"):
+            if current is None:
+                current = []
+            for cell in re.split(r"\|\|", line.lstrip("|")):
+                current.append(_cell_content(cell))
+            continue
+    if current:
+        rows.append(current)
+    return headers, [r for r in rows if any(c for c in r)]
+
+
+def _extract_polls_from_polling_section(wikitext: str, state: str, district: int) -> list[dict]:
+    """Extract poll rows from a `Polling` subsection's wikitable.
+
+    Candidate columns are keyed off a trailing `(R)`/`(D)`/`(I)` party suffix in
+    the header cell (e.g. `Rob Bresnahan (R)`), not by substring-matching
+    "democrat"/"republican" — real 2026 tables label columns with candidate
+    names, which the old approach never matched."""
+    polls: list[dict] = []
+    headers, rows = _parse_section_table(wikitext)
+    if not headers:
         return polls
-    rows = _parse_wiki_table(wikitext)
+
+    party_cols: dict[int, str] = {}
+    pollster_col: Optional[int] = None
+    date_col: Optional[int] = None
+    for idx, h in enumerate(headers):
+        m = _PARTY_SUFFIX_RE.search(h)
+        if m:
+            party_cols[idx] = m.group(1)
+            continue
+        hl = h.lower()
+        if pollster_col is None and ("poll" in hl or "source" in hl or "firm" in hl):
+            pollster_col = idx
+        elif date_col is None and "date" in hl:
+            date_col = idx
+    if not party_cols:
+        return polls
+    if pollster_col is None:
+        pollster_col = 0
+
     now = datetime.now(timezone.utc)
-    for row in rows:
-        # Look for rows that have Democrat/Republican percentages
-        dem_val = rep_val = None
-        pollster = ""
-        dates = ""
-        for k, v in row.items():
-            kl = k.lower()
-            if "democrat" in kl or "dem" in kl:
-                dem_val = _parse_pct(v)
-            elif "republican" in kl or "rep" in kl:
-                rep_val = _parse_pct(v)
-            elif "poll" in kl or "firm" in kl or "source" in kl:
-                pollster = v[:80]
-            elif "date" in kl or "field" in kl:
-                dates = v[:40]
-        if dem_val and rep_val and pollster:
-            uid = hashlib.md5(f"{state}{district}{pollster}{dates}{dem_val}{rep_val}".encode()).hexdigest()[:16]
-            polls.append({
-                "poll_id": f"wiki-{state}-{district}-{uid}",
-                "pollster": pollster,
-                "grade": get_grade(pollster),
-                "state": state,
-                "district": district,
-                "dem": dem_val,
-                "rep": rep_val,
-                "end_date": now,
-                "fetched_at": now,
-            })
+    for cells in rows:
+        pollster = cells[pollster_col].strip() if pollster_col < len(cells) else ""
+        if not pollster:
+            continue
+        dem_val = rep_val = ind_val = None
+        for col, party in party_cols.items():
+            if col >= len(cells):
+                continue
+            val = _parse_pct(cells[col])
+            if val is None:
+                continue
+            if party == "D":
+                dem_val = val
+            elif party == "R":
+                rep_val = val
+            else:  # (I) — captured so the suffix approach generalizes; not stored on HousePoll
+                ind_val = val
+        if dem_val is None and rep_val is None:
+            continue
+        dates = cells[date_col].strip() if date_col is not None and date_col < len(cells) else ""
+        uid = hashlib.md5(f"{state}{district}{pollster}{dates}{dem_val}{rep_val}".encode()).hexdigest()[:16]
+        polls.append({
+            "poll_id": f"wiki-{state}-{district}-{uid}",
+            "pollster": pollster[:80],
+            "grade": get_grade(pollster),
+            "state": state,
+            "district": district,
+            "dem": dem_val,
+            "rep": rep_val,
+            "ind": ind_val,
+            "end_date": _parse_wiki_date(dates) or now,
+            "fetched_at": now,
+        })
     return polls
 
 
-async def fetch_district_polls(db: Session) -> int:
-    """Scan Wikipedia pages for all competitive districts and collect polls."""
-    await _load_pollster_grades()
-    districts = db.query(CompetitiveDistrict).all()
-    total = 0
+_MONTHS = {
+    "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
+    "july": 7, "august": 8, "september": 9, "october": 10, "november": 11,
+    "december": 12,
+}
 
+
+def _parse_wiki_date(s: str) -> Optional[datetime]:
+    """Best-effort end-date parse from strings like 'June 15–18, 2026'. Returns
+    the last day mentioned; None if it can't be parsed (poll_id stays stable off
+    the raw string, so this only affects the stored end_date)."""
+    if not s:
+        return None
+    year_m = re.search(r"(20\d{2})", s)
+    month_m = re.findall(r"[A-Za-z]+", s)
+    day_m = re.findall(r"\d{1,2}", s)
+    if not year_m or not day_m:
+        return None
+    months = [_MONTHS[w.lower()] for w in month_m if w.lower() in _MONTHS]
+    if not months:
+        return None
+    year = int(year_m.group(1))
+    # Days excluding the year digits; take the largest (end of a range).
+    days = [int(d) for d in day_m if 1 <= int(d) <= 31 and d != str(year)]
+    if not days:
+        return None
+    try:
+        return datetime(year, months[-1], max(days), tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def _housepoll_from_extract(p: dict) -> HousePoll:
+    """Build a HousePoll from an extracted poll dict, dropping non-column keys."""
+    return HousePoll(
+        poll_id=p["poll_id"],
+        pollster=p["pollster"],
+        grade=p.get("grade"),
+        state=p["state"],
+        district=p["district"],
+        dem=p.get("dem"),
+        rep=p.get("rep"),
+        end_date=p.get("end_date"),
+        source="wikipedia",
+        fetched_at=p["fetched_at"],
+    )
+
+
+async def fetch_district_polls(db: Session) -> int:
+    """Fetch district polls from each state's consolidated 2026 House page.
+
+    One sections call per state (not per district), then the `District N →
+    General election → Polling` subsection is resolved and fetched by index. Each
+    state is isolated: one state's failure never blocks the others (AC-5)."""
+    await _load_pollster_grades()
+    by_state: dict[str, list[int]] = collections.defaultdict(list)
+    for dist in db.query(CompetitiveDistrict).all():
+        by_state[dist.state].append(dist.district)
+
+    total = 0
     async with httpx.AsyncClient(headers=HEADERS, timeout=12.0) as client:
-        for dist in districts:
-            page = _wiki_page_for_district(dist.state, dist.district)
+        for state, districts in by_state.items():
             try:
-                resp = await client.get(WIKI_API, params={
-                    "action": "parse", "page": page.replace("%27", "'"),
-                    "prop": "wikitext", "format": "json",
-                })
-                if resp.status_code != 200:
+                sections = await _fetch_state_sections(client, state)
+                if not sections:
                     continue
-                wikitext = resp.json().get("parse", {}).get("wikitext", {}).get("*", "")
-                polls = _extract_polls_from_wikitext(wikitext, dist.state, dist.district)
-                for p in polls:
-                    existing = db.query(HousePoll).filter(HousePoll.poll_id == p["poll_id"]).first()
-                    if not existing:
-                        db.add(HousePoll(**p))
-                        total += 1
+                page = _state_wiki_page(state)
+                for district in districts:
+                    section_idx = _find_polling_section(sections, district)
+                    if section_idx is None:
+                        continue  # AC-7: no general-election polling yet, clean skip
+                    wikitext = await _fetch_section_wikitext(client, page, section_idx)
+                    if not wikitext:
+                        continue
+                    for p in _extract_polls_from_polling_section(wikitext, state, district):
+                        existing = db.query(HousePoll).filter(HousePoll.poll_id == p["poll_id"]).first()
+                        if not existing:
+                            db.add(_housepoll_from_extract(p))
+                            total += 1
             except Exception as e:
-                logger.debug("District poll fetch failed %s-%d: %s", dist.state, dist.district, e)
+                logger.warning("District poll fetch failed for state %s: %s", state, e)
 
     db.commit()
     logger.info("District polls: %d new polls added", total)

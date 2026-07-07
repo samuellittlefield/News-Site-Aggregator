@@ -1,0 +1,39 @@
+{
+  "parse": {
+    "title": "2026 United States House of Representatives elections in Pennsylvania",
+    "pageid": 99999901,
+    "sections": [
+      {"toclevel": 1, "level": "2", "line": "Overview", "number": "1", "index": "1", "anchor": "Overview"},
+      {"toclevel": 1, "level": "2", "line": "Statewide", "number": "2", "index": "2", "anchor": "Statewide"},
+
+      {"toclevel": 1, "level": "2", "line": "District 7", "number": "3", "index": "100", "anchor": "District_7"},
+      {"toclevel": 2, "level": "3", "line": "Democratic primary", "number": "3.1", "index": "101", "anchor": "Democratic_primary_7"},
+      {"toclevel": 3, "level": "4", "line": "Candidates", "number": "3.1.1", "index": "102", "anchor": "Candidates_D7"},
+      {"toclevel": 3, "level": "4", "line": "Polling", "number": "3.1.2", "index": "103", "anchor": "Polling_D7_primary"},
+      {"toclevel": 2, "level": "3", "line": "Republican primary", "number": "3.2", "index": "104", "anchor": "Republican_primary_7"},
+      {"toclevel": 3, "level": "4", "line": "Candidates", "number": "3.2.1", "index": "105", "anchor": "Candidates_R7"},
+      {"toclevel": 2, "level": "3", "line": "General election", "number": "3.3", "index": "106", "anchor": "General_election_7"},
+      {"toclevel": 3, "level": "4", "line": "Candidates", "number": "3.3.1", "index": "107", "anchor": "Candidates_G7"},
+      {"toclevel": 3, "level": "4", "line": "Polling", "number": "3.3.2", "index": "111", "anchor": "Polling_7"},
+      {"toclevel": 3, "level": "4", "line": "Results", "number": "3.3.3", "index": "112", "anchor": "Results_7"},
+
+      {"toclevel": 1, "level": "2", "line": "District 8", "number": "4", "index": "124", "anchor": "District_8"},
+      {"toclevel": 2, "level": "3", "line": "Democratic primary", "number": "4.1", "index": "125", "anchor": "Democratic_primary_8"},
+      {"toclevel": 3, "level": "4", "line": "Candidates", "number": "4.1.1", "index": "126", "anchor": "Candidates_D8"},
+      {"toclevel": 3, "level": "4", "line": "Polling", "number": "4.1.2", "index": "130", "anchor": "Polling_D8_primary"},
+      {"toclevel": 2, "level": "3", "line": "Republican primary", "number": "4.2", "index": "131", "anchor": "Republican_primary_8"},
+      {"toclevel": 3, "level": "4", "line": "Candidates", "number": "4.2.1", "index": "132", "anchor": "Candidates_R8"},
+      {"toclevel": 2, "level": "3", "line": "General election", "number": "4.3", "index": "139", "anchor": "General_election_8"},
+      {"toclevel": 3, "level": "4", "line": "Candidates", "number": "4.3.1", "index": "140", "anchor": "Candidates_G8"},
+      {"toclevel": 3, "level": "4", "line": "Polling", "number": "4.3.2", "index": "141", "anchor": "Polling_8"},
+      {"toclevel": 3, "level": "4", "line": "Results", "number": "4.3.3", "index": "142", "anchor": "Results_8"},
+
+      {"toclevel": 1, "level": "2", "line": "District 9", "number": "5", "index": "160", "anchor": "District_9"},
+      {"toclevel": 2, "level": "3", "line": "Democratic primary", "number": "5.1", "index": "161", "anchor": "Democratic_primary_9"},
+      {"toclevel": 3, "level": "4", "line": "Polling", "number": "5.1.1", "index": "162", "anchor": "Polling_D9_primary"},
+      {"toclevel": 2, "level": "3", "line": "Republican primary", "number": "5.2", "index": "163", "anchor": "Republican_primary_9"},
+
+      {"toclevel": 1, "level": "2", "line": "See also", "number": "6", "index": "170", "anchor": "See_also"}
+    ]
+  }
+}

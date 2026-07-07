@@ -1,0 +1,19 @@
+[
+  {
+    "id": "ak01-ppp-2026-06",
+    "poll_type": "us-representative",
+    "seat_name": "AK-01",
+    "pollster": "Public Policy Polling",
+    "sponsors": ["Bill Hill"],
+    "partisan": "DEM",
+    "start_date": "2026-06-20",
+    "end_date": "2026-06-22",
+    "sample_size": 615,
+    "population": "lv",
+    "url": "https://example.com/polls/ak01-ppp",
+    "answers": [
+      {"choice": "Nick Begich III", "pct": 46.0},
+      {"choice": "Matt Schultz", "pct": 39.0}
+    ]
+  }
+]

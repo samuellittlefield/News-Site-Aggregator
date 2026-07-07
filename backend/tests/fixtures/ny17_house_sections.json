@@ -1,0 +1,20 @@
+{
+  "parse": {
+    "title": "2026 United States House of Representatives elections in New York",
+    "pageid": 99999902,
+    "sections": [
+      {"toclevel": 1, "level": "2", "line": "Overview", "number": "1", "index": "1", "anchor": "Overview"},
+
+      {"toclevel": 1, "level": "2", "line": "District 17", "number": "2", "index": "200", "anchor": "District_17"},
+      {"toclevel": 2, "level": "3", "line": "Democratic primary", "number": "2.1", "index": "201", "anchor": "Democratic_primary_17"},
+      {"toclevel": 3, "level": "4", "line": "Candidates", "number": "2.1.1", "index": "202", "anchor": "Candidates_D17"},
+      {"toclevel": 3, "level": "4", "line": "Polling", "number": "2.1.2", "index": "203", "anchor": "Polling_D17_primary"},
+      {"toclevel": 2, "level": "3", "line": "Republican primary", "number": "2.2", "index": "204", "anchor": "Republican_primary_17"},
+      {"toclevel": 3, "level": "4", "line": "Candidates", "number": "2.2.1", "index": "205", "anchor": "Candidates_R17"},
+      {"toclevel": 2, "level": "3", "line": "General election", "number": "2.3", "index": "210", "anchor": "General_election_17"},
+      {"toclevel": 3, "level": "4", "line": "Candidates", "number": "2.3.1", "index": "211", "anchor": "Candidates_G17"},
+
+      {"toclevel": 1, "level": "2", "line": "District 18", "number": "3", "index": "220", "anchor": "District_18"}
+    ]
+  }
+}

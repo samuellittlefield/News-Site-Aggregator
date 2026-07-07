@@ -211,7 +211,8 @@ async def refresh_votehub():
     db = SessionLocal()
     try:
         counts = await votehub_service.fetch_votehub_polls(db)
-        logger.info("VoteHub refresh complete — %s", counts)
+        house = await votehub_service.fetch_votehub_house_polls(db)
+        logger.info("VoteHub refresh complete — %s, %d house polls", counts, house)
     except Exception as e:
         logger.exception("VoteHub refresh failed: %s", e)
     finally:
