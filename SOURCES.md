@@ -14,9 +14,9 @@ runtime is 3.9 (use `Optional[...]`, not `X | Y`).
 
 | Source | Upstream | Service | Cadence | Route | UI |
 |---|---|---|---|---|---|
-| VoteHub polls | `api.votehub.com/polls` (approval + generic ballot) | `votehub.py` | hourly | `/api/votehub/*`, merged into `/api/polls/generic-ballot` | Polls tab (approval card, recent polls, generic ballot) |
+| VoteHub polls | `api.votehub.com/polls` (approval + generic ballot; also `poll_type=us-representative` → House district polls) | `votehub.py` | hourly | `/api/votehub/*`, merged into `/api/polls/generic-ballot`; district polls into `/api/polls/house*` | Polls tab (approval card, recent polls, generic ballot; district map/carousel) |
 | Economist/YouGov crosstabs | weekly tab-report PDFs (cloudfront) discovered via Wikipedia | `economist_yougov.py` | 12h | `/api/economist/*` | Polls tab (`ApprovalSection`) |
-| House district polls | Wikipedia 2026 House polls + vendored 538 pollster grades | `house_polls.py` | 6h | `/api/polls/house*` | Polls tab (district map, carousel) |
+| House district polls | Two streams into `HousePoll` (distinguished by `source`): **(1)** Wikipedia — each state's consolidated 2026 House page, `District N → General election → Polling` subsection resolved via the section tree (`house_polls.py`, 6h); **(2)** VoteHub `us-representative` polls, party resolved via the `Candidate` crosswalk (`votehub.py`, hourly — see VoteHub row). Pollster grades from the vendored 538 CSV | `house_polls.py`, `votehub.py` | 6h / hourly | `/api/polls/house*` | Polls tab (district map, carousel) |
 | FEC candidates | `api.open.fec.gov/v1` | `fec_candidates.py` | 24h | `/api/candidates/*` | Admin / candidates |
 
 ## Forecasting

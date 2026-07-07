@@ -6,7 +6,7 @@ single place to see where everything stands.
 
 **Statuses:** `idea` → `planned` (pipeline docs in progress) → `in progress` (implementation) → `shipped`
 
-_Last updated: 2026-07-02_
+_Last updated: 2026-07-07_
 
 ## Now
 
@@ -14,6 +14,7 @@ _Last updated: 2026-07-02_
 |---|---|---|---|---|
 | 1 | Test harness + CI (pytest, GitHub Actions) | `test-harness-ci` | shipped | `backend/tests/` (Postgres `newsdb_test`, respx-mocked upstreams, scheduler gated via `DISABLE_SCHEDULER=1`); 8 seed tests green. `.github/workflows/ci.yml` runs backend pytest + frontend build on PR/push. CI pins Python 3.11 (Railway runs 3.11.x). TC-7/TC-8 (red-check verification) to confirm on first PR |
 | 2 | Adopt Alembic migrations (baseline + deploy hook) | `alembic-migrations` | shipped | Baseline `1cfc95e31a13` = prod (drift reconciled via Plan A into models); prod `stamp head` done 2026-07-07; Procfile runs `upgrade head`. `create_all` kept as release-1 safety net (remove in follow-up) |
+| 6 | Fix district poll scraper + add VoteHub as a second district-polling source | `district-poll-scraper-fix` | in progress | v1: `house_polls.py` targets per-district Wikipedia pages that don't exist for this cycle (consolidated to state-level pages with `District N → General election → Polling` subsections, HTTP 200 on missing pages masked the failure); real polls exist (e.g. 3 for PA-8) and were never ingested. Spot-checked NY-17 + NE-2, found a primary-vs-general Polling collision risk (AC-2b). v2: VoteHub's already-integrated API has an unused `poll_type=us-representative` category (51 polls / ~19 districts, structured JSON, `seat_name` field) — more reliable than Wikipedia scraping; added as a second stream via a candidate-name→party crosswalk against the existing `Candidate` table, plus a small additive `HousePoll.source` column/migration. Full pipeline (all 4 docs) approved by Samuel 2026-07-07, handed to Claude Code |
 
 ## Next
 

@@ -8,13 +8,14 @@ so each refresh fetches everything and upserts by VoteHub id.
 """
 import logging
 import math
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
 from sqlalchemy.orm import Session
 
-from app.models import VoteHubPoll
+from app.models import Candidate, HousePoll, VoteHubPoll
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,11 @@ POLL_QUERIES = {
     "approval": {"poll_type": "approval", "subject": "donald-trump"},
     "generic-ballot": {"poll_type": "generic-ballot"},
 }
+
+# Per-district polls live under a separate poll type. Handled by
+# fetch_votehub_house_polls (writes to HousePoll), not the VoteHubPoll loop
+# above, so approval/generic-ballot ingestion is entirely unaffected.
+US_REP_QUERY = {"poll_type": "us-representative"}
 
 
 def _parse_date(val: Optional[str]) -> Optional[datetime]:
@@ -109,6 +115,165 @@ async def fetch_votehub_polls(db: Session) -> dict:
         logger.info("VoteHub %s: %d polls upserted", poll_type, saved)
 
     return counts
+
+
+# ── VoteHub district (us-representative) polls → HousePoll ────────────────────
+#
+# VoteHub gives per-district polls a structured `seat_name` ("AK-01") and an
+# `answers` list of candidate names. Party is resolved by matching those names
+# against the Candidate table — never from the poll's own `partisan` field,
+# which is the *sponsor's* lean, not a candidate's party (AC-11).
+
+_SEAT_RE = re.compile(r"^([A-Z]{2})-(\d{1,2}|AL)$")
+_NAME_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
+
+
+def _parse_seat(seat: Optional[str]) -> Optional[tuple[str, int]]:
+    """'AK-01' → ('AK', 1); at-large 'AK-AL' → ('AK', 0). None if malformed."""
+    if not seat:
+        return None
+    m = _SEAT_RE.match(seat.strip().upper())
+    if not m:
+        return None
+    state, dpart = m.group(1), m.group(2)
+    return state, (0 if dpart == "AL" else int(dpart))
+
+
+def _normalize_name(name: str) -> str:
+    """Case/punctuation-fold a name, drop suffixes, and sort tokens so that
+    FEC's 'Last, First' ordering matches VoteHub's 'First Last'."""
+    s = re.sub(r"[.,'’\-]", " ", name.lower())
+    tokens = [t for t in s.split() if t and t not in _NAME_SUFFIXES]
+    return " ".join(sorted(tokens))
+
+
+def _district_candidates(db: Session, state: str, district: int) -> dict[str, list[str]]:
+    """normalized-name → list of parties for that district's House candidates.
+    A name mapping to more than one candidate is ambiguous (see AC-9)."""
+    crosswalk: dict[str, list[str]] = {}
+    rows = db.query(Candidate).filter(
+        Candidate.office == "H",
+        Candidate.state == state,
+        Candidate.district == district,
+    ).all()
+    for c in rows:
+        if not c.party:
+            continue
+        crosswalk.setdefault(_normalize_name(c.name), []).append(c.party)
+    return crosswalk
+
+
+def _match_candidate_party(name: str, crosswalk: dict[str, list[str]]) -> Optional[str]:
+    """Resolve a candidate name to a party via the crosswalk. Returns None (never
+    a guess) on zero or ambiguous (>1) matches (AC-9). `partisan` is never
+    consulted here (AC-11)."""
+    parties = crosswalk.get(_normalize_name(name))
+    if not parties or len(parties) != 1:
+        return None
+    return parties[0]
+
+
+def _to_float(val) -> Optional[float]:
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
+async def fetch_votehub_house_polls(db: Session) -> int:
+    """Fetch VoteHub `us-representative` polls and upsert into HousePoll with
+    source='votehub'. Skips (and logs) any poll whose dem/rep candidates can't be
+    unambiguously resolved via the Candidate crosswalk."""
+    now = datetime.now(timezone.utc)
+    try:
+        async with httpx.AsyncClient(headers=HEADERS, timeout=30.0) as client:
+            resp = await client.get(VOTEHUB_URL, params=US_REP_QUERY)
+        resp.raise_for_status()
+        polls = resp.json()
+    except httpx.RequestError as e:
+        logger.warning("VoteHub request failed (us-representative): %s", e)
+        return 0
+    except httpx.HTTPStatusError as e:
+        logger.warning("VoteHub HTTP error %s (us-representative)", e.response.status_code)
+        return 0
+    except ValueError as e:
+        logger.warning("VoteHub returned non-JSON body (us-representative): %s", e)
+        return 0
+
+    if not isinstance(polls, list):
+        logger.warning("VoteHub unexpected payload shape for us-representative")
+        return 0
+
+    crosswalks: dict[tuple[str, int], dict[str, list[str]]] = {}
+    saved = 0
+    for p in polls:
+        vid = p.get("id")
+        if not vid:
+            continue
+        seat = p.get("seat_name")
+        parsed = _parse_seat(seat)
+        if not parsed:
+            logger.warning("VoteHub us-rep poll %s has unparseable seat_name %r; skipping", vid, seat)
+            continue
+        state, district = parsed
+        answers = p.get("answers") or []
+        if len(answers) < 2:
+            logger.warning("VoteHub us-rep poll %s (%s) has <2 answers; skipping", vid, seat)
+            continue
+
+        key = (state, district)
+        if key not in crosswalks:
+            crosswalks[key] = _district_candidates(db, state, district)
+        crosswalk = crosswalks[key]
+
+        dem_val = rep_val = None
+        unresolved: list[str] = []
+        for ans in answers:
+            choice = str(ans.get("choice", ""))
+            party = _match_candidate_party(choice, crosswalk)
+            if party is None:
+                unresolved.append(choice)
+                continue
+            pct = _to_float(ans.get("pct"))
+            if party.upper().startswith("D"):
+                dem_val = pct
+            elif party.upper().startswith("R"):
+                rep_val = pct
+
+        if dem_val is None or rep_val is None:
+            logger.warning(
+                "VoteHub us-rep poll %s (%s): could not resolve dem/rep candidates "
+                "(unmatched: %s); skipping", vid, seat, ", ".join(unresolved) or "none",
+            )
+            continue
+
+        poll_id = f"votehub-{vid}"
+        population = p.get("population")
+        fields = dict(
+            pollster=p.get("pollster") or "Unknown",
+            state=state,
+            district=district,
+            start_date=_parse_date(p.get("start_date")),
+            end_date=_parse_date(p.get("end_date")),
+            sample_size=p.get("sample_size"),
+            population=population[:4] if population else None,
+            dem=dem_val,
+            rep=rep_val,
+            source_url=p.get("url"),
+            source="votehub",
+            fetched_at=now,
+        )
+        existing = db.query(HousePoll).filter(HousePoll.poll_id == poll_id).first()
+        if existing:
+            for field, value in fields.items():
+                setattr(existing, field, value)
+        else:
+            db.add(HousePoll(poll_id=poll_id, **fields))
+            saved += 1
+
+    db.commit()
+    logger.info("VoteHub us-representative: %d house polls upserted", saved)
+    return saved
 
 
 def compute_average(db: Session, poll_type: str, window_days: int = 21) -> Optional[dict]:

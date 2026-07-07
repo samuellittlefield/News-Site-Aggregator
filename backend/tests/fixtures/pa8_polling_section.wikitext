@@ -1,0 +1,37 @@
+{| class="wikitable" style="text-align:center;font-size:90%"
+! Poll source
+! Date(s) administered
+! Sample size
+! Margin of error
+! {{party color cell|Republican}} | Rob Bresnahan (R)
+! {{party color cell|Democratic}} | Paige Cognetti (D)
+! {{party color cell|Independent}} | Chris Foster (I)
+! Undecided
+|-
+| [[Lake Research Partners]]
+| June 15–18, 2026
+| 500 (LV)
+| ± 4.4%
+| 47%
+| 45%
+| 3%
+| 5%
+|-
+| [[Impact Research]]
+| June 3–6, 2026
+| 600 (LV)
+| ± 4.0%
+| 46%
+| 45%
+| 2%
+| 7%
+|-
+| [[Public Policy Polling]]
+| May 20–21, 2026
+| 550 (RV)
+| ± 4.2%
+| 45%
+| 43%
+| 4%
+| 8%
+|}

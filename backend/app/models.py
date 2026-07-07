@@ -230,6 +230,9 @@ class HousePoll(Base):
     dem = Column(Float, nullable=True)
     rep = Column(Float, nullable=True)
     source_url = Column(String, nullable=True)
+    # Which ingestion stream produced this row: "wikipedia" | "votehub".
+    # server_default keeps existing rows valid; they predate VoteHub ingestion.
+    source = Column(String(16), nullable=False, server_default="wikipedia")
     fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 

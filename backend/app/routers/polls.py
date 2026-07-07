@@ -65,6 +65,7 @@ class HousePollOut(BaseModel):
     dem: Optional[float]
     rep: Optional[float]
     source_url: Optional[str]
+    source: str
 
     model_config = {"from_attributes": True}
 
