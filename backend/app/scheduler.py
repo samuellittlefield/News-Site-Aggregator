@@ -32,9 +32,23 @@ from app.services import earthquakes as earthquakes_service
 from app.services import faa_status as faa_status_service
 from app.services import prediction_markets as prediction_markets_service
 from app.services import kalshi as kalshi_service
+from app.services.source_run import record_success, record_failure, SOURCE_CADENCE
 
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
+
+
+def _record_success(db, source_id, item_count=None):
+    """Thin wrapper: pull the job's label + expected cadence from the single
+    source of truth (SOURCE_CADENCE) so recording calls can't drift from
+    registration. Defensively no-ops on error via record_success itself (AC-3)."""
+    meta = SOURCE_CADENCE[source_id]
+    record_success(db, source_id, meta.label, meta.cadence_minutes, item_count=item_count)
+
+
+def _record_failure(db, source_id, error):
+    meta = SOURCE_CADENCE[source_id]
+    record_failure(db, source_id, meta.label, meta.cadence_minutes, error)
 
 
 async def refresh_all():
@@ -59,8 +73,10 @@ async def refresh_all():
         db.commit()
         await clustering_service.cluster_trends(db)
         logger.info("Refresh complete — %d trends processed", len(all_trends))
+        _record_success(db, "refresh_job", item_count=len(all_trends))
     except Exception as e:
         logger.exception("Refresh job failed: %s", e)
+        _record_failure(db, "refresh_job", e)
     finally:
         db.close()
 
@@ -71,8 +87,10 @@ async def refresh_climate():
     try:
         events = await climate_service.fetch_climate_events(db)
         logger.info("Climate refresh complete — %d events", len(events))
+        _record_success(db, "climate_job", item_count=len(events))
     except Exception as e:
         logger.exception("Climate refresh failed: %s", e)
+        _record_failure(db, "climate_job", e)
     finally:
         db.close()
 
@@ -92,8 +110,10 @@ async def refresh_extended_sources():
         # Build cross-source situation summaries
         synthesized = await situation_builder_service.build_situation_summaries(db)
         logger.info("Situation synthesis: updated %d summaries", synthesized)
+        _record_success(db, "extended_job")
     except Exception as e:
         logger.exception("Extended sources refresh failed: %s", e)
+        _record_failure(db, "extended_job", e)
     finally:
         db.close()
 
@@ -104,8 +124,10 @@ async def refresh_news():
     try:
         for cat in ["politics", "transportation"]:
             await news_categories_service.fetch_news_category(cat, db)
+        _record_success(db, "news_job")
     except Exception as e:
         logger.exception("News refresh failed: %s", e)
+        _record_failure(db, "news_job", e)
     finally:
         db.close()
 
@@ -114,9 +136,11 @@ async def refresh_status():
     logger.info("Refreshing service statuses...")
     db = SessionLocal()
     try:
-        await service_status_service.fetch_service_statuses(db)
+        statuses = await service_status_service.fetch_service_statuses(db)
+        _record_success(db, "status_job", item_count=len(statuses))
     except Exception as e:
         logger.exception("Service status refresh failed: %s", e)
+        _record_failure(db, "status_job", e)
     finally:
         db.close()
 
@@ -126,8 +150,10 @@ async def refresh_weather():
     db = SessionLocal()
     try:
         await regional_weather_service.fetch_regional_weather(db)
+        _record_success(db, "weather_job")
     except Exception as e:
         logger.exception("Weather refresh failed: %s", e)
+        _record_failure(db, "weather_job", e)
     finally:
         db.close()
 
@@ -138,8 +164,10 @@ async def refresh_nws_alerts():
     try:
         alerts = await nws_alerts_service.fetch_nws_alerts(db)
         logger.info("NWS alerts refresh complete — %d alerts", len(alerts))
+        _record_success(db, "nws_alerts_job", item_count=len(alerts))
     except Exception as e:
         logger.exception("NWS alerts refresh failed: %s", e)
+        _record_failure(db, "nws_alerts_job", e)
     finally:
         db.close()
 
@@ -151,8 +179,11 @@ async def refresh_candidates():
         result = await fec_candidates_service.refresh_candidates(db)
         logger.info("Candidates refresh: House=%d Senate=%d Gov=%d",
                     result["house"], result["senate"], result["governors"])
+        _record_success(db, "candidates_job",
+                        item_count=result["house"] + result["senate"] + result["governors"])
     except Exception as e:
         logger.exception("Candidates refresh failed: %s", e)
+        _record_failure(db, "candidates_job", e)
     finally:
         db.close()
 
@@ -163,8 +194,10 @@ async def refresh_retirements():
     try:
         n = await retirements_service.refresh_retirements(db)
         logger.info("Retirements refresh: %d members not seeking re-election", n)
+        _record_success(db, "retirements_job", item_count=n)
     except Exception as e:
         logger.exception("Retirements refresh failed: %s", e)
+        _record_failure(db, "retirements_job", e)
     finally:
         db.close()
 
@@ -175,8 +208,10 @@ async def run_issue_tagger():
     try:
         count = await issue_tagger_service.tag_candidates(db)
         logger.info("Issue tagger: %d suggestions added", count)
+        _record_success(db, "issue_tagger_job", item_count=count)
     except Exception as e:
         logger.exception("Issue tagger failed: %s", e)
+        _record_failure(db, "issue_tagger_job", e)
     finally:
         db.close()
 
@@ -187,8 +222,10 @@ async def refresh_house_polls():
     try:
         result = await house_polls_service.refresh_house_polls(db)
         logger.info("House polls refresh complete — %d new polls", result.get("new_polls", 0))
+        _record_success(db, "house_polls_job", item_count=result.get("new_polls", 0))
     except Exception as e:
         logger.exception("House polls refresh failed: %s", e)
+        _record_failure(db, "house_polls_job", e)
     finally:
         db.close()
 
@@ -200,8 +237,10 @@ async def refresh_economist():
         result = await economist_yougov_service.refresh_economist_yougov(db)
         logger.info("Econ/YouGov refresh complete — %d new reports, %d questions",
                     result.get("new_reports", 0), result.get("questions", 0))
+        _record_success(db, "economist_job", item_count=result.get("new_reports", 0))
     except Exception as e:
         logger.exception("Econ/YouGov refresh failed: %s", e)
+        _record_failure(db, "economist_job", e)
     finally:
         db.close()
 
@@ -213,8 +252,10 @@ async def refresh_votehub():
         counts = await votehub_service.fetch_votehub_polls(db)
         house = await votehub_service.fetch_votehub_house_polls(db)
         logger.info("VoteHub refresh complete — %s, %d house polls", counts, house)
+        _record_success(db, "votehub_job", item_count=house)
     except Exception as e:
         logger.exception("VoteHub refresh failed: %s", e)
+        _record_failure(db, "votehub_job", e)
     finally:
         db.close()
 
@@ -225,19 +266,28 @@ async def refresh_earthquakes():
     try:
         count = await earthquakes_service.fetch_earthquakes(db)
         logger.info("Earthquake refresh complete — %d quakes", count)
+        _record_success(db, "earthquakes_job", item_count=count)
     except Exception as e:
         logger.exception("Earthquake refresh failed: %s", e)
+        _record_failure(db, "earthquakes_job", e)
     finally:
         db.close()
 
 
 async def refresh_faa():
     logger.info("Refreshing FAA airspace status...")
+    # fetch_faa_status() itself needs no DB (FAA status isn't persisted to a
+    # table); this session exists purely to record the SourceRun health row.
+    db = SessionLocal()
     try:
         events = await faa_status_service.fetch_faa_status()
         logger.info("FAA refresh complete — %d events", len(events))
+        _record_success(db, "faa_job", item_count=len(events))
     except Exception as e:
         logger.exception("FAA refresh failed: %s", e)
+        _record_failure(db, "faa_job", e)
+    finally:
+        db.close()
 
 
 async def refresh_markets():
@@ -246,8 +296,10 @@ async def refresh_markets():
     try:
         count = await prediction_markets_service.fetch_polymarket(db)
         logger.info("Markets refresh complete — %d markets", count)
+        _record_success(db, "markets_job", item_count=count)
     except Exception as e:
         logger.exception("Markets refresh failed: %s", e)
+        _record_failure(db, "markets_job", e)
     finally:
         db.close()
 
@@ -258,8 +310,10 @@ async def refresh_kalshi():
     try:
         count = await kalshi_service.fetch_kalshi(db)
         logger.info("Kalshi refresh complete — %d markets", count)
+        _record_success(db, "kalshi_job", item_count=count)
     except Exception as e:
         logger.exception("Kalshi refresh failed: %s", e)
+        _record_failure(db, "kalshi_job", e)
     finally:
         db.close()
 

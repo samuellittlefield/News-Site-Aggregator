@@ -8,6 +8,12 @@ All ingestion follows one pattern: an `async def fetch_*(db)` service → an ups
 `backend/app/models.py` → a router under `backend/app/routers/` → an APScheduler job. The Python
 runtime is 3.9 (use `Optional[...]`, not `X | Y`).
 
+Every registered scheduler job also records its own run health into a single upserted `SourceRun`
+row (success/failure, last run/success time, item count, last error, expected cadence), keyed by the
+job id. It's surfaced at `GET /api/status/sources` and in the "Data Sources" panel on the Status
+page — see the `ingestion-health` feature. This is cross-cutting instrumentation of the jobs below,
+not a new upstream source, so it gets no row of its own.
+
 ---
 
 ## Politics & Polling

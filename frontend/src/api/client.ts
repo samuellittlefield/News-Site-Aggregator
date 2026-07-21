@@ -381,6 +381,34 @@ export function useServiceStatus() {
   return { services, loading };
 }
 
+// ── Per-source ingestion health (our own scheduler jobs) ─────────────────────
+
+export interface SourceRun {
+  source_id: string;
+  label: string;
+  status: string;                 // success | failure | never_run
+  last_run_at: string | null;
+  last_success_at: string | null;
+  error_message: string | null;
+  item_count: number | null;
+  cadence_minutes: number;
+}
+
+export function useSourceRuns() {
+  const [sources, setSources] = useState<SourceRun[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    get<SourceRun[]>("/api/status/sources")
+      .then(d => { setSources(d); setLoading(false); })
+      .catch(() => setLoading(false));
+    const id = setInterval(() => {
+      get<SourceRun[]>("/api/status/sources").then(setSources).catch(() => {});
+    }, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+  return { sources, loading };
+}
+
 export function useAstronomy() {
   const [sky, setSky] = useState<AstronomyData | null>(null);
   const [loading, setLoading] = useState(true);
