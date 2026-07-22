@@ -102,6 +102,14 @@ function ChamberCard({ chamber, model, tuned }: { chamber: ChamberForecast; mode
             median {model.median_dem_seats} D seats (90% range {model.p10_dem_seats}–{model.p90_dem_seats})
             {" · "}{model.n_sims.toLocaleString()} sims · {tuned ? "tuned knobs" : "backtested δ"}
           </p>
+          {model.swing_source === "fallback" && (
+            <p
+              className="text-[9px] text-poll-red mt-1 flex items-center gap-1"
+              title="No current generic-ballot polling data (VoteHub or aggregator) was available — showing the static 2024 baseline instead of a live estimate."
+            >
+              ⚠ No current polling data — showing 2024 baseline
+            </p>
+          )}
         </div>
       )}
     </div>

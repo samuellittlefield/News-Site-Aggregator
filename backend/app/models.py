@@ -413,6 +413,20 @@ class SourceRun(Base):
     cadence_minutes = Column(Integer, nullable=False)         # expected interval → per-source staleness
 
 
+class GenericBallotAggregate(Base):
+    """Wikipedia-sourced generic-ballot aggregator averages, persisted from the
+    same `refresh_house_polls` fetch that already runs every 6h (previously
+    fetched live and discarded). One current row per aggregator `source`, not a
+    history log — gives the forecast model a DB-only fallback read path."""
+    __tablename__ = "generic_ballot_aggregates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    source = Column(String, nullable=False, unique=True)
+    rep = Column(Float, nullable=False)
+    dem = Column(Float, nullable=False)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class ClimateEvent(Base):
     __tablename__ = "climate_events"
 

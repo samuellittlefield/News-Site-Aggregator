@@ -907,6 +907,7 @@ export interface ChamberModel {
   n_sims: number;
   note: string;
   swing_d: number;
+  swing_source: "votehub" | "aggregator" | "fallback";
   tau: number;
   delta: number;
 }
