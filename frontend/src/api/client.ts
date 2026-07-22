@@ -704,18 +704,53 @@ export function useIssueTaxonomy() {
   return taxonomy;
 }
 
+// ── Admin key (session memory only — never localStorage/sessionStorage) ──────
+// Set by AdminPage once the user enters it; attached to admin write calls below.
+
+let adminKey: string | null = null;
+
+export function setAdminKey(key: string): void {
+  adminKey = key;
+}
+
+export function hasAdminKey(): boolean {
+  return adminKey !== null;
+}
+
+export class AdminAuthError extends Error {
+  constructor() {
+    super("Admin key missing or incorrect");
+    this.name = "AdminAuthError";
+  }
+}
+
+async function adminFetch(path: string, init: RequestInit): Promise<Response> {
+  const res = await fetch(path, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(adminKey ? { "X-Admin-Key": adminKey } : {}),
+      ...init.headers,
+    },
+  });
+  if (res.status === 401) {
+    adminKey = null;
+    throw new AdminAuthError();
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res;
+}
+
 export async function confirmTag(candidateId: number, tagId: number): Promise<void> {
-  await fetch(`/api/candidates/${candidateId}/issues/${tagId}`, {
+  await adminFetch(`/api/candidates/${candidateId}/issues/${tagId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ confirmed: true, rejected: false }),
   });
 }
 
 export async function rejectTag(candidateId: number, tagId: number): Promise<void> {
-  await fetch(`/api/candidates/${candidateId}/issues/${tagId}`, {
+  await adminFetch(`/api/candidates/${candidateId}/issues/${tagId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ rejected: true }),
   });
 }
@@ -725,9 +760,8 @@ export async function addManualTag(
   issueCode: string,
   supportingText?: string,
 ): Promise<void> {
-  await fetch(`/api/candidates/${candidateId}/issues`, {
+  await adminFetch(`/api/candidates/${candidateId}/issues`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ issue_code: issueCode, supporting_text: supportingText }),
   });
 }

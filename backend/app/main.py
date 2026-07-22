@@ -2,8 +2,10 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine
@@ -135,9 +137,27 @@ async def _do_full_refresh():
     await refresh_kalshi()
 
 
+# Deliberately public (no admin key) — called from a nav-linked public button
+# on TrendsPage.tsx. Guarded by a cooldown instead so rapid repeat clicks can't
+# queue overlapping full refreshes. In-memory/module-level: resets on
+# deploy/restart, which is fine for this low-stakes threat model.
+REFRESH_COOLDOWN_SECONDS = 60.0
+_last_refresh_at: Optional[datetime] = None
+
+
 @app.post("/api/refresh", summary="Manually trigger a data refresh")
 async def manual_refresh(background_tasks: BackgroundTasks):
     """Returns immediately; all refresh jobs run in the background."""
+    global _last_refresh_at
+    now = datetime.now(timezone.utc)
+    if _last_refresh_at is not None:
+        elapsed = (now - _last_refresh_at).total_seconds()
+        if elapsed < REFRESH_COOLDOWN_SECONDS:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Refresh already triggered recently; try again in {REFRESH_COOLDOWN_SECONDS - elapsed:.0f}s",
+            )
+    _last_refresh_at = now
     background_tasks.add_task(_do_full_refresh)
     return {"status": "ok", "message": "Refresh queued"}
 
