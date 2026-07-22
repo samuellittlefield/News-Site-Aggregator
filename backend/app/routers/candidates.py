@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.auth import require_admin_key
 from app.database import get_db
 from app.models import Candidate, CandidateIssueTag
 from app.services.issue_tagger import ISSUE_TAXONOMY
@@ -155,7 +156,7 @@ def get_candidate(candidate_id: int, db: Session = Depends(get_db)):
     return data
 
 
-@router.post("/{candidate_id}/issues", response_model=IssueTagOut)
+@router.post("/{candidate_id}/issues", response_model=IssueTagOut, dependencies=[Depends(require_admin_key)])
 def add_issue_tag(candidate_id: int, body: TagCreateIn, db: Session = Depends(get_db)):
     """Admin: manually add a confirmed issue tag."""
     c = db.query(Candidate).filter(Candidate.id == candidate_id).first()
@@ -181,7 +182,7 @@ def add_issue_tag(candidate_id: int, body: TagCreateIn, db: Session = Depends(ge
     return _tag_out(tag)
 
 
-@router.patch("/{candidate_id}/issues/{tag_id}", response_model=IssueTagOut)
+@router.patch("/{candidate_id}/issues/{tag_id}", response_model=IssueTagOut, dependencies=[Depends(require_admin_key)])
 def update_issue_tag(candidate_id: int, tag_id: int, body: TagUpdateIn, db: Session = Depends(get_db)):
     """Admin: confirm or reject an AI-suggested tag."""
     tag = db.query(CandidateIssueTag).filter(

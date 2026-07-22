@@ -1,13 +1,129 @@
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import {
+  AdminAuthError,
   CandidateSummary,
   addManualTag,
   confirmTag,
+  hasAdminKey,
   rejectTag,
+  setAdminKey,
   useCandidates,
   useIssueTaxonomy,
   usePendingTags,
 } from "../api/client";
+
+// ── Admin key gate ────────────────────────────────────────────────────────────
+// Prompts for the X-Admin-Key once per session (in memory only) on the first
+// write attempt, and re-prompts with a visible error if the backend 401s.
+
+interface AdminGateContextValue {
+  runAdminAction: (action: () => Promise<void>) => Promise<void>;
+}
+
+const AdminGateContext = createContext<AdminGateContextValue | null>(null);
+
+function useAdminAction() {
+  const ctx = useContext(AdminGateContext);
+  if (!ctx) throw new Error("useAdminAction must be used within AdminPage");
+  return ctx.runAdminAction;
+}
+
+function useAdminGate() {
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [keyInput, setKeyInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<(() => Promise<void>) | null>(null);
+
+  const attempt = async (action: () => Promise<void>) => {
+    try {
+      await action();
+      setError(null);
+    } catch (e) {
+      if (e instanceof AdminAuthError) {
+        setError("Admin key was rejected — please re-enter it.");
+        setPendingAction(() => action);
+        setPromptOpen(true);
+      } else {
+        throw e;
+      }
+    }
+  };
+
+  const runAdminAction = async (action: () => Promise<void>) => {
+    if (!hasAdminKey()) {
+      setError(null);
+      setPendingAction(() => action);
+      setPromptOpen(true);
+      return;
+    }
+    await attempt(action);
+  };
+
+  const submitKey = async () => {
+    if (!keyInput) return;
+    setAdminKey(keyInput);
+    setKeyInput("");
+    setPromptOpen(false);
+    const action = pendingAction;
+    setPendingAction(null);
+    if (action) await attempt(action);
+  };
+
+  const cancelPrompt = () => {
+    setPromptOpen(false);
+    setPendingAction(null);
+    setKeyInput("");
+  };
+
+  return { promptOpen, keyInput, setKeyInput, submitKey, cancelPrompt, error, runAdminAction };
+}
+
+function AdminKeyPrompt({
+  keyInput,
+  setKeyInput,
+  submitKey,
+  cancelPrompt,
+}: {
+  keyInput: string;
+  setKeyInput: (v: string) => void;
+  submitKey: () => void;
+  cancelPrompt: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+      <div className="bg-gray-900 border border-gray-700 rounded-xl p-5 w-full max-w-sm space-y-3">
+        <p className="text-sm font-medium text-white">Admin key required</p>
+        <p className="text-xs text-gray-500">
+          This action needs the admin key. It's kept in memory for this session only.
+        </p>
+        <input
+          type="password"
+          autoFocus
+          value={keyInput}
+          onChange={e => setKeyInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") submitKey(); }}
+          placeholder="Admin key"
+          className="w-full text-sm bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-gray-500"
+        />
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={cancelPrompt}
+            className="text-xs px-3 py-1.5 text-gray-400 hover:text-gray-200 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={submitKey}
+            disabled={!keyInput}
+            className="text-xs px-3 py-1.5 bg-purple-900/50 hover:bg-purple-900 border border-purple-800 text-purple-300 rounded-lg transition-colors disabled:opacity-50"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const OFFICE_LABELS: Record<string, string> = { H: "House", S: "Senate", G: "Governor" };
 const PARTY_STYLES: Record<string, string> = {
@@ -35,13 +151,16 @@ function ConfidenceBar({ value }: { value: number | null }) {
 function PendingTagsTab() {
   const { tags, loading, refresh } = usePendingTags();
   const [processing, setProcessing] = useState<Set<number>>(new Set());
+  const runAdminAction = useAdminAction();
 
   const handle = async (tagId: number, candidateId: number, action: "confirm" | "reject") => {
     setProcessing(prev => new Set([...prev, tagId]));
     try {
-      if (action === "confirm") await confirmTag(candidateId, tagId);
-      else await rejectTag(candidateId, tagId);
-      refresh();
+      await runAdminAction(async () => {
+        if (action === "confirm") await confirmTag(candidateId, tagId);
+        else await rejectTag(candidateId, tagId);
+        refresh();
+      });
     } finally {
       setProcessing(prev => { const s = new Set(prev); s.delete(tagId); return s; });
     }
@@ -124,6 +243,7 @@ function CandidateBrowserTab() {
   const [newIssue, setNewIssue] = useState<string>("");
   const [addingTag, setAddingTag] = useState(false);
   const taxonomy = useIssueTaxonomy();
+  const runAdminAction = useAdminAction();
 
   const { candidates, loading } = useCandidates(officeFilter || undefined, stateFilter || undefined);
 
@@ -131,8 +251,10 @@ function CandidateBrowserTab() {
     if (!selectedCandidate || !newIssue) return;
     setAddingTag(true);
     try {
-      await addManualTag(selectedCandidate.id, newIssue);
-      setNewIssue("");
+      await runAdminAction(async () => {
+        await addManualTag(selectedCandidate.id, newIssue);
+        setNewIssue("");
+      });
     } finally {
       setAddingTag(false);
     }
@@ -241,33 +363,51 @@ type AdminTab = "pending" | "candidates";
 
 export function AdminPage() {
   const [tab, setTab] = useState<AdminTab>("pending");
+  const gate = useAdminGate();
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-        <div className="space-y-1">
-          <h2 className="text-xl font-bold text-white tracking-tight">Election Intelligence Admin</h2>
-          <p className="text-xs text-gray-600">Internal use only · Issue tag review + candidate management</p>
-        </div>
+    <AdminGateContext.Provider value={{ runAdminAction: gate.runAdminAction }}>
+      <div className="min-h-screen bg-gray-950">
+        <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold text-white tracking-tight">Election Intelligence Admin</h2>
+            <p className="text-xs text-gray-600">Internal use only · Issue tag review + candidate management</p>
+          </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 border-b border-gray-800 pb-0">
-          {([["pending", "Pending AI Tags"], ["candidates", "Candidate Browser"]] as [AdminTab, string][]).map(([id, label]) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              className={`text-sm px-4 py-2 border-b-2 transition-colors -mb-px ${
-                tab === id ? "border-purple-500 text-white" : "border-transparent text-gray-500 hover:text-gray-300"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+          {gate.error && (
+            <div className="text-xs bg-red-950/50 border border-red-800 text-red-400 rounded-lg px-3 py-2">
+              {gate.error}
+            </div>
+          )}
 
-        {tab === "pending" && <PendingTagsTab />}
-        {tab === "candidates" && <CandidateBrowserTab />}
+          {/* Tabs */}
+          <div className="flex gap-1 border-b border-gray-800 pb-0">
+            {([["pending", "Pending AI Tags"], ["candidates", "Candidate Browser"]] as [AdminTab, string][]).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                className={`text-sm px-4 py-2 border-b-2 transition-colors -mb-px ${
+                  tab === id ? "border-purple-500 text-white" : "border-transparent text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {tab === "pending" && <PendingTagsTab />}
+          {tab === "candidates" && <CandidateBrowserTab />}
+        </div>
       </div>
-    </div>
+
+      {gate.promptOpen && (
+        <AdminKeyPrompt
+          keyInput={gate.keyInput}
+          setKeyInput={gate.setKeyInput}
+          submitKey={gate.submitKey}
+          cancelPrompt={gate.cancelPrompt}
+        />
+      )}
+    </AdminGateContext.Provider>
   );
 }
