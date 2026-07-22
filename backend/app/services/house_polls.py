@@ -24,7 +24,7 @@ from typing import Optional
 import httpx
 from sqlalchemy.orm import Session
 
-from app.models import CompetitiveDistrict, HousePoll
+from app.models import CompetitiveDistrict, GenericBallotAggregate, HousePoll
 
 logger = logging.getLogger(__name__)
 
@@ -683,9 +683,40 @@ async def fetch_district_polls(db: Session) -> int:
     return total
 
 
+def _persist_generic_ballot(db: Session, rows: list[dict]) -> None:
+    """Upsert aggregator rows into `GenericBallotAggregate` by `source`, giving
+    the forecast model a DB-only fallback read path (forecast-model-swing-
+    fallback-fix)."""
+    for row in rows:
+        if row.get("rep") is None or row.get("dem") is None:
+            continue
+        existing = (
+            db.query(GenericBallotAggregate)
+            .filter(GenericBallotAggregate.source == row["source"])
+            .first()
+        )
+        if existing:
+            existing.rep = row["rep"]
+            existing.dem = row["dem"]
+            existing.fetched_at = datetime.now(timezone.utc)
+        else:
+            db.add(GenericBallotAggregate(
+                source=row["source"], rep=row["rep"], dem=row["dem"],
+                fetched_at=datetime.now(timezone.utc),
+            ))
+    db.commit()
+
+
 async def refresh_house_polls(db: Session) -> dict:
     """Full refresh: seed districts, fetch generic ballot, scan district polls."""
     seed_districts(db)
     generic = await fetch_generic_ballot(db)
+    # Isolated in its own try/except so a persistence hiccup can't break the
+    # district-poll refresh happening in the same job.
+    try:
+        _persist_generic_ballot(db, generic)
+    except Exception:
+        db.rollback()
+        logger.exception("Generic ballot aggregate persistence failed")
     district_count = await fetch_district_polls(db)
     return {"generic_ballot": generic, "new_polls": district_count}

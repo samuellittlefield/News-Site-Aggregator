@@ -72,6 +72,7 @@ class ChamberModel(BaseModel):
     n_sims: int
     note: str
     swing_d: float = 0.0   # current national environment vs 2024 pres baseline
+    swing_source: str = "fallback"  # "votehub" | "aggregator" | "fallback" — which tier produced swing_d
     tau: float = 0.0       # national-error SD
     delta: float = 0.0     # per-seat idiosyncratic SD
 
@@ -177,6 +178,7 @@ def _chamber_model(model_out: Optional[dict], chamber: str) -> Optional[ChamberM
         n_sims=block["n_sims"],
         note=block["note"],
         swing_d=block["swing_d"],
+        swing_source=block["swing_source"],
         tau=block["params"]["tau"],
         delta=block["params"]["delta"],
     )

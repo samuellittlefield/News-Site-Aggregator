@@ -25,12 +25,12 @@ import csv
 import logging
 import math
 import os
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 from sqlalchemy.orm import Session
 
-from app.models import Candidate
+from app.models import Candidate, GenericBallotAggregate
 from app.services import forecast_constants as C
 from app.services.votehub import compute_average
 
@@ -59,14 +59,31 @@ def _inc_dir(party: str) -> float:
     return 1.0 if p == "D" else (-1.0 if p == "R" else 0.0)
 
 
-def _current_env(db: Session) -> float:
+def _aggregate_env(db: Session) -> Optional[float]:
+    """Simple mean of dem/rep across stored `GenericBallotAggregate` rows (no
+    sample-size weighting available for these aggregator averages, unlike
+    VoteHub's raw polls). `None` if no rows are persisted yet."""
+    rows = db.query(GenericBallotAggregate).all()
+    if not rows:
+        return None
+    dem = sum(r.dem for r in rows) / len(rows)
+    rep = sum(r.rep for r in rows) / len(rows)
+    return round(dem - rep, 1)
+
+
+def _current_env(db: Session) -> Tuple[float, str]:
     """The current national environment (Dem−Rep), i.e. the live generic-ballot
-    margin. Seats are modeled as `lean-vs-nation + this`. Falls back to the 2024
-    presidential margin (a neutral swing) if the VoteHub window is empty."""
+    margin, plus which tier produced it. Seats are modeled as
+    `lean-vs-nation + this`. Three-tier fallback: VoteHub's own live average
+    first, then the persisted Wikipedia-aggregator average (same data the Polls
+    page shows), then the static 2024 presidential margin as a last resort."""
     gb = compute_average(db, "generic-ballot")
     if gb and gb.get("margin") is not None:
-        return gb["margin"]
-    return C.NATIONAL_PRES_MARGIN_2024_D
+        return gb["margin"], "votehub"
+    agg = _aggregate_env(db)
+    if agg is not None:
+        return agg, "aggregator"
+    return C.NATIONAL_PRES_MARGIN_2024_D, "fallback"
 
 
 def _house_lean(row: dict) -> float:
@@ -139,7 +156,7 @@ def _simulate(base_margins: np.ndarray, n_sims: int, tau: float, delta: float,
     return (margins > 0.0).sum(axis=1)
 
 
-def _summary(dem_seats: np.ndarray, threshold: int, swing: float,
+def _summary(dem_seats: np.ndarray, threshold: int, swing: float, swing_source: str,
              tau: float, delta: float, inc: float, fund_coef: float) -> dict:
     p_dem = float((dem_seats >= threshold).mean())
     return {
@@ -150,6 +167,7 @@ def _summary(dem_seats: np.ndarray, threshold: int, swing: float,
         "p90_dem_seats": int(np.percentile(dem_seats, 90)),
         "n_sims": int(dem_seats.size),
         "swing_d": round(swing, 1),
+        "swing_source": swing_source,
         "params": {"tau": tau, "delta": delta, "incumbency_adv": inc, "fundraising_coef": fund_coef},
         "note": "experimental",
     }
@@ -174,7 +192,7 @@ def run_model(db: Session, n_sims: int = C.N_SIMS, seed: Optional[int] = None, *
     fund_coef = C.FUNDRAISING_COEF if fundraising_coef is None else fundraising_coef
 
     rng = np.random.default_rng(seed)
-    env = _current_env(db)                                  # nation now (Dem−Rep)
+    env, swing_source = _current_env(db)                    # nation now (Dem−Rep)
     swing = env - C.NATIONAL_PRES_MARGIN_2024_D             # vs 2024 pres, for display
     house_fund, senate_fund = _fundraising_edges(db, fund_coef, C.FUNDRAISING_CAP)
 
@@ -184,7 +202,7 @@ def run_model(db: Session, n_sims: int = C.N_SIMS, seed: Optional[int] = None, *
     h_fund = np.array([house_fund.get(_house_fund_key(r), 0.0) for r in _HOUSE])
     h_base = h_lean + env + inc * h_inc + h_fund
     h_dem = _simulate(h_base, n_sims, tau, delta_house, rng)
-    house = _summary(h_dem, C.HOUSE_MAJORITY, swing, tau, delta_house, inc, fund_coef)
+    house = _summary(h_dem, C.HOUSE_MAJORITY, swing, swing_source, tau, delta_house, inc, fund_coef)
 
     # ── Senate: carry-over baseline + the seats up in 2026 ──────────────────
     # Seat prior blends last-same-seat result (incumbency) with presidential lean.
@@ -195,7 +213,7 @@ def run_model(db: Session, n_sims: int = C.N_SIMS, seed: Optional[int] = None, *
     s_fund = np.array([senate_fund.get(r["state"], 0.0) for r in _SENATE])
     s_base = s_lean + env + inc * s_inc + s_fund
     s_dem = carryover_d + _simulate(s_base, n_sims, tau, delta_senate, rng)
-    senate = _summary(s_dem, C.SENATE_DEM_CONTROL, swing, tau, delta_senate, inc, fund_coef)
+    senate = _summary(s_dem, C.SENATE_DEM_CONTROL, swing, swing_source, tau, delta_senate, inc, fund_coef)
 
     logger.info(
         "Forecast model: swing D%+.1f | House P(D)=%.2f med=%d | Senate P(D)=%.2f med=%d",
