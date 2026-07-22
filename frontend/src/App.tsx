@@ -6,7 +6,6 @@ import { HazardsPage } from "./pages/HazardsPage";
 import { MarketsPage } from "./pages/MarketsPage";
 import { NewsPage } from "./pages/NewsPage";
 import { PollsPage } from "./pages/PollsPage";
-import { StatusPage } from "./pages/StatusPage";
 import { TrendsPage } from "./pages/TrendsPage";
 import { WeatherPage } from "./pages/WeatherPage";
 
@@ -61,7 +60,6 @@ export default function App() {
       {page === "hazards" && <HazardsPage />}
       {page === "weather" && <WeatherPage />}
       {page === "news" && <NewsPage />}
-      {page === "status" && <StatusPage />}
       {page === "admin" && <AdminPage />}
     </div>
   );

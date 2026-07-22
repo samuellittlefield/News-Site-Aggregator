@@ -1,11 +1,11 @@
-import { useSourceRuns, type SourceRun } from "../api/client";
+import type { SourceRun } from "../api/client";
 
 /** Health of our *own* scheduled ingestion jobs (distinct from third-party
  *  "Internet Health" in ServiceStatusSection). Flags a source when its latest
  *  run failed, or when its last success is older than that source's own expected
  *  cadence (AC-7), and surfaces the last error inline (AC-8). */
 
-type Health = "ok" | "stale" | "failure" | "never_run";
+export type Health = "ok" | "stale" | "failure" | "never_run";
 
 const STYLES: Record<Health, { dot: string; text: string; bg: string; border: string }> = {
   ok:        { dot: "bg-green-500",  text: "text-gray-500",   bg: "bg-green-950/20",  border: "border-gray-800" },
@@ -27,12 +27,22 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function classify(s: SourceRun): Health {
+export function classify(s: SourceRun): Health {
   if (s.status === "failure") return "failure";
   if (s.status === "never_run" || !s.last_success_at) return "never_run";
   // Flagged stale once the last good run is older than this source's cadence.
   if (minutesSince(s.last_success_at) > s.cadence_minutes) return "stale";
   return "ok";
+}
+
+/** Shared aggregate used by both this section's own header and the page-level
+ *  summary banner, so the two never drift apart (AC-3). */
+export function summarizeSourceHealth(sources: SourceRun[]): { total: number; flagged: number; allHealthy: boolean } {
+  const flagged = sources.filter(s => {
+    const h = classify(s);
+    return h === "failure" || h === "stale";
+  }).length;
+  return { total: sources.length, flagged, allHealthy: flagged === 0 };
 }
 
 function statusLabel(s: SourceRun, health: Health): string {
@@ -45,16 +55,10 @@ function statusLabel(s: SourceRun, health: Health): string {
   return health === "stale" ? `stale · ${rel}` : rel;
 }
 
-export function SourceHealthSection() {
-  const { sources, loading } = useSourceRuns();
-
+export function SourceHealthSection({ sources, loading }: { sources: SourceRun[]; loading: boolean }) {
   if (loading || sources.length === 0) return null;
 
-  const flagged = sources.filter(s => {
-    const h = classify(s);
-    return h === "failure" || h === "stale";
-  });
-  const allHealthy = flagged.length === 0;
+  const { flagged: flaggedCount, allHealthy } = summarizeSourceHealth(sources);
 
   // Problem sources first, then alphabetical by label.
   const order: Record<Health, number> = { failure: 0, stale: 1, never_run: 2, ok: 3 };
@@ -81,7 +85,7 @@ export function SourceHealthSection() {
         <span className="text-xs text-gray-600 normal-case font-normal">
           {allHealthy
             ? `All ${sources.length} sources current`
-            : `${flagged.length} source${flagged.length > 1 ? "s" : ""} need attention`}
+            : `${flaggedCount} source${flaggedCount > 1 ? "s" : ""} need attention`}
         </span>
       </div>
 

@@ -2,6 +2,7 @@ import { createContext, useContext, useState } from "react";
 import {
   AdminAuthError,
   CandidateSummary,
+  SourceRun,
   addManualTag,
   confirmTag,
   hasAdminKey,
@@ -10,7 +11,10 @@ import {
   useCandidates,
   useIssueTaxonomy,
   usePendingTags,
+  useSourceRuns,
 } from "../api/client";
+import { ServiceStatusSection } from "../components/ServiceStatusSection";
+import { SourceHealthSection, summarizeSourceHealth } from "../components/SourceHealthSection";
 
 // ── Admin key gate ────────────────────────────────────────────────────────────
 // Prompts for the X-Admin-Key once per session (in memory only) on the first
@@ -172,8 +176,8 @@ function PendingTagsTab() {
     return (
       <div className="text-center py-12 text-gray-600">
         <p className="text-2xl mb-2">✓</p>
-        <p>No pending AI suggestions. Run the issue tagger to generate new ones.</p>
-        <p className="text-xs mt-2">POST /api/admin/run-tagger to trigger manually</p>
+        <p>No pending AI suggestions.</p>
+        <p className="text-xs mt-2">New suggestions come from the weekly scheduled tagging job — nothing to trigger manually.</p>
       </div>
     );
   }
@@ -357,22 +361,52 @@ function CandidateBrowserTab() {
   );
 }
 
+// ── Health summary banner ─────────────────────────────────────────────────────
+// Read-only, no admin key needed (AC-9) — reuses SourceHealthSection's own
+// classify()-derived aggregate so the count here can't drift from the cards
+// below it (AC-3).
+
+function HealthSummaryBanner({ sources, loading }: { sources: SourceRun[]; loading: boolean }) {
+  if (loading || sources.length === 0) return null;
+
+  const { total, flagged, allHealthy } = summarizeSourceHealth(sources);
+
+  return (
+    <div
+      className={`text-sm rounded-lg px-4 py-3 border ${
+        allHealthy
+          ? "bg-green-950/20 border-gray-800 text-gray-300"
+          : "bg-red-950/20 border-red-800/60 text-red-400"
+      }`}
+    >
+      {allHealthy
+        ? `All ${total} data sources current.`
+        : `${flagged} of ${total} data source${total > 1 ? "s" : ""} need attention — see below.`}
+    </div>
+  );
+}
+
 // ── Main Admin Page ───────────────────────────────────────────────────────────
 
-type AdminTab = "pending" | "candidates";
+type AdminTab = "candidates" | "pending";
 
 export function AdminPage() {
-  const [tab, setTab] = useState<AdminTab>("pending");
+  const [tab, setTab] = useState<AdminTab>("candidates");
   const gate = useAdminGate();
+  const { sources, loading: sourcesLoading } = useSourceRuns();
 
   return (
     <AdminGateContext.Provider value={{ runAdminAction: gate.runAdminAction }}>
       <div className="min-h-screen bg-gray-950">
         <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
           <div className="space-y-1">
-            <h2 className="text-xl font-bold text-white tracking-tight">Election Intelligence Admin</h2>
-            <p className="text-xs text-gray-600">Internal use only · Issue tag review + candidate management</p>
+            <h2 className="text-xl font-bold text-white tracking-tight">Election Intelligence — Status &amp; Admin</h2>
+            <p className="text-xs text-gray-600">
+              Internal use only. The health sections below are read-only and need no admin key — the key is only needed to confirm/reject a tag or add one manually.
+            </p>
           </div>
+
+          <HealthSummaryBanner sources={sources} loading={sourcesLoading} />
 
           {gate.error && (
             <div className="text-xs bg-red-950/50 border border-red-800 text-red-400 rounded-lg px-3 py-2">
@@ -380,9 +414,23 @@ export function AdminPage() {
             </div>
           )}
 
-          {/* Tabs */}
+          {/* Our own data pipeline health — prominent (AC-4) */}
+          <SourceHealthSection sources={sources} loading={sourcesLoading} />
+
+          {/* Third-party dependency status — collapsed by default (AC-4/AC-5) */}
+          <details className="group">
+            <summary className="cursor-pointer select-none flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-gray-300 transition-colors">
+              <span className="text-gray-600 transition-transform group-open:rotate-90">▸</span>
+              Third-Party Service Status
+            </summary>
+            <div className="mt-4">
+              <ServiceStatusSection />
+            </div>
+          </details>
+
+          {/* Tabs — candidate browsing leads, tag review is secondary (AC-7) */}
           <div className="flex gap-1 border-b border-gray-800 pb-0">
-            {([["pending", "Pending AI Tags"], ["candidates", "Candidate Browser"]] as [AdminTab, string][]).map(([id, label]) => (
+            {([["candidates", "Candidate Browser"], ["pending", "Pending AI Tags"]] as [AdminTab, string][]).map(([id, label]) => (
               <button
                 key={id}
                 onClick={() => setTab(id)}
@@ -395,8 +443,8 @@ export function AdminPage() {
             ))}
           </div>
 
-          {tab === "pending" && <PendingTagsTab />}
           {tab === "candidates" && <CandidateBrowserTab />}
+          {tab === "pending" && <PendingTagsTab />}
         </div>
       </div>
 

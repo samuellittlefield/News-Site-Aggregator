@@ -41,7 +41,7 @@ export function DashboardPage({ navigate, openTrend }: Props) {
 
         {/* Row 4: slim strips */}
         <div className="col-span-1 md:col-span-3 xl:col-span-6 [&>section]:h-full">
-          <StatusPanel onOpen={() => navigate("status")} />
+          <StatusPanel onOpen={() => navigate("admin")} />
         </div>
         <div className="col-span-1 md:col-span-3 xl:col-span-6 [&>section]:h-full">
           <AstronomyPanel />
