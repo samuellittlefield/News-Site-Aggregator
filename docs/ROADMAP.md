@@ -21,7 +21,7 @@ _Last updated: 2026-07-21_
 
 | # | Item | Slug | Status | Notes |
 |---|---|---|---|---|
-| 3 | Auth on write endpoints (`/api/refresh`, candidate issue-tag POST/PUT) | `write-endpoint-auth` | planned | All 4 pipeline docs drafted 2026-07-21. Scope split during planning: candidate issue-tag POST/PATCH get an `ADMIN_API_KEY` header check; `/api/refresh` stays public (site isn't promoted) but gets an in-memory cooldown instead — Samuel's call |
+| 3 | Auth on write endpoints (`/api/refresh`, candidate issue-tag POST/PUT) | `write-endpoint-auth` | shipped | PR [#10](https://github.com/samuellittlefield/News-Site-Aggregator/pull/10). `require_admin_key` (`auth.py`) gates the two candidate issue-tag routes via `X-Admin-Key` vs. `ADMIN_API_KEY` (read at call time, `secrets.compare_digest`, fails closed if unset); `/api/refresh` stays public (called from the public `TrendsPage` button) with a 60s in-memory cooldown instead (429 on repeats). Frontend `AdminPage`/`client.ts` prompt for the key once per session (memory only, never persisted), attach it to confirm/reject/add-tag calls, and re-prompt with a visible error banner on 401. Tests `test_write_endpoint_auth.py` (TC-1–TC-7, TC-10); full suite 43 passed. Browser-verified end to end |
 | 5 | Frontend data layer: replace hand-rolled hooks with TanStack Query | `frontend-data-layer` | idea | `client.ts` is 987 lines of duplicated useState/useEffect |
 
 ## Later / chores
