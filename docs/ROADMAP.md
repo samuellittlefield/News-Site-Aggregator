@@ -86,6 +86,7 @@ fire".
 | Vitest / frontend unit tests | idea | Deferred from `test-harness-ci` non-goals |
 | "Autogenerate produces empty diff" CI check (model/migration drift) | folded into T1 | Deferred from `alembic-migrations`. Now specced as part of `elections-seam` (AC-5 / TC-8), which needs the same check as its own acceptance bar — strike this row when T1 ships |
 | `ModelForecast` ingest for Split Ticket (per `SOURCES.md` forecasting sweep) | idea | Blocked on confirming a stable data endpoint |
+| Ballot measures / propositions as a data source | idea | Raised 2026-09-11. Coverage of what people actually vote on beyond candidates — CA propositions and other states' ballot measures — framed by *impact* rather than horse race. **Bearing on naming:** this would make the extracted product broader than "polling," so the T5a domain decision should wait until this direction is settled. Placeholder display name until then: "Elections" (already the internal package name). No upstream source identified yet |
 
 ## Parked
 
