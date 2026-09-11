@@ -15,7 +15,7 @@ from app.routers import climate as climate_router
 from app.routers import weather as weather_router
 from app.routers import news as news_router
 from app.routers import astronomy as astronomy_router
-from app.routers import status as status_router
+from app.shared.routers import status as status_router
 from app.routers import polls as polls_router
 from app.routers import candidates as candidates_router
 from app.routers import economist as economist_router

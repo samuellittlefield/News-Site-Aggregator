@@ -19,7 +19,7 @@ import pytest
 
 from app import scheduler
 from app.models import SourceRun
-from app.services.source_run import record_success, record_failure, SOURCE_CADENCE
+from app.shared.services.source_run import record_success, record_failure, SOURCE_CADENCE
 
 
 def _rows(db, source_id):
@@ -104,7 +104,7 @@ class _ExplodingDB:
 def test_recording_error_never_propagates(caplog):
     """TC-3 / AC-3: a DB failure inside record_success/record_failure is swallowed
     and logged, never raised out to the ingestion job."""
-    with caplog.at_level(logging.ERROR, logger="app.services.source_run"):
+    with caplog.at_level(logging.ERROR, logger="app.shared.services.source_run"):
         # Must not raise despite the exploding session.
         record_success(_ExplodingDB(), "kalshi_job", "Kalshi", 10, item_count=1)
         record_failure(_ExplodingDB(), "kalshi_job", "Kalshi", 10, RuntimeError("x"))

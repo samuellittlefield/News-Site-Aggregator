@@ -20,7 +20,7 @@ from app.services import reddit_trending as reddit_trending_service
 from app.services import google_trends_multi as google_trends_multi_service
 from app.services import nyt as nyt_service
 from app.services import situation_builder as situation_builder_service
-from app.services import service_status as service_status_service
+from app.shared.services import service_status as service_status_service
 from app.services import nws_alerts as nws_alerts_service
 from app.services import house_polls as house_polls_service
 from app.services import fec_candidates as fec_candidates_service
@@ -32,7 +32,7 @@ from app.services import earthquakes as earthquakes_service
 from app.services import faa_status as faa_status_service
 from app.services import prediction_markets as prediction_markets_service
 from app.services import kalshi as kalshi_service
-from app.services.source_run import record_success, record_failure, SOURCE_CADENCE
+from app.shared.services.source_run import record_success, record_failure, SOURCE_CADENCE
 
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()

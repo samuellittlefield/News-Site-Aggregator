@@ -12,7 +12,7 @@ fixture routes `get_db` to the transactional test session, so rows seeded via
 from datetime import datetime, timezone
 
 from app.models import SourceRun
-from app.services.source_run import SOURCE_CADENCE
+from app.shared.services.source_run import SOURCE_CADENCE
 
 EXPECTED_FIELDS = {
     "source_id", "label", "status", "last_run_at",
