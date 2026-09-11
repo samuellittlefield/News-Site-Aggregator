@@ -1,0 +1,109 @@
+==Nationwide job approval ratings==
+Polls marked with a (R) or (D) have been identified by ''[[FiveThirtyEight]]'' as having Republican or Democratic funding, respectively.
+
+===2026===
+==== July 2026 ====
+{{sticky table start}}{{mw-datatable}}{{table alignment}}
+{| class="wikitable sortable mw-datatable defaultcenter col1left col2left col3left sticky-table-head sticky-table-col1" style="line-height:0.96;"
+|+ {{sro|July 2025}}
+!Poll source
+! style=width:7em; |Date
+!Sample<br>size{{efn|Key:<br>A – all adults<br>RV – registered voters<br>LV – likely voters<br>V – unclear|name=key}}
+! style=width:3em; |MoE
+! Approve
+! Disapprove
+! Unsure/<br>Other
+! Net
+|-
+| [https://www.documentcloud.org/documents/28520039-cnn-july-poll-conducted-by-ssrs/ CNN/SSRS]
+| July 23-27
+| 1225 Adults
+| ± 3.2%
+| 34%
+| style="background:#8B8B54; color: white" | 66%
+| 0%
+| style="background:#8B8B54; color: white" | −32%
+|-
+| [https://d3nkl3psvxxpe9.cloudfront.net/documents/econTabReport_0t0YpHo.pdf#page=22 The Economist/YouGov]
+| July 25-27
+| 1407 RV
+| ± 3.2%
+| 34%
+| style="background:#8B8B54; color: white" | 62%
+| 4%
+| style="background:#8B8B54; color: white" | −28%
+|-
+|}
+{{sticky table end}}
+
+==== June 2026 ====
+{{sticky table start}}{{mw-datatable}}{{table alignment}}
+{| class="wikitable sortable mw-datatable defaultcenter col1left col2left col3left sticky-table-head sticky-table-col1" style="line-height:0.96;"
+|+ {{sro|July 2025}}
+!Poll source
+! style=width:7em; |Date
+!Sample<br>size{{efn|Key:<br>A – all adults<br>RV – registered voters<br>LV – likely voters<br>V – unclear|name=key}}
+! style=width:3em; |MoE
+! Approve
+! Disapprove
+! Unsure/<br>Other
+! Net
+|-
+| [https://d3nkl3psvxxpe9.cloudfront.net/documents/econTabReport_AvLU7vY.pdf The Economist/YouGov]
+| May 29-June 1
+| 1453 RV
+| ± 3.2%
+| 35%
+| style="background:#8B8B54; color: white" | 61%
+| 3%
+| style="background:#8B8B54; color: white" | −26%
+|-
+|}
+{{sticky table end}}
+
+==== May 2026 ====
+{{sticky table start}}{{mw-datatable}}{{table alignment}}
+{| class="wikitable sortable mw-datatable defaultcenter col1left col2left col3left sticky-table-head sticky-table-col1" style="line-height:0.96;"
+|+ {{sro|July 2025}}
+!Poll source
+! style=width:7em; |Date
+!Sample<br>size{{efn|Key:<br>A – all adults<br>RV – registered voters<br>LV – likely voters<br>V – unclear|name=key}}
+! style=width:3em; |MoE
+! Approve
+! Disapprove
+! Unsure/<br>Other
+! Net
+|-
+| [https://d3nkl3psvxxpe9.cloudfront.net/documents/econTabReport_i4K4elJ.pdf The Economist/YouGov]
+| May 1-4
+| 1409 RV
+| ± 3.3%
+| 36%
+| style="background:#8B8B54; color: white" | 58%
+| 3%
+| style="background:#8B8B54; color: white" | −22%
+|-
+|}
+{{sticky table end}}
+
+=== Immigration ===
+{| class="wikitable sortable" style="text-align:center;line-height:0.96"
+!Pollster
+!Date
+!Approve
+!Disapprove
+!Unsure/Other
+|-
+| [https://d3nkl3psvxxpe9.cloudfront.net/documents/econTabReport_AvLU7vY.pdf The Economist/YouGov]
+| May 29-June 1
+| 40%
+| style="background:#DEDEBD;"| 55%
+| 5%
+|-
+| [https://ygo-assets-websites-editorial-emea.yougov.net/documents/Elon_Musk_and_Donald_Trump_poll_results.pdf The Economist/YouGov]
+| April 4-7
+| 38%
+| style="background:#DEDEBD;"| 52%
+| 10%
+|-
+|}

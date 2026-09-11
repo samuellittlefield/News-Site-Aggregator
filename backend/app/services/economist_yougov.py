@@ -23,7 +23,7 @@ import httpx
 import pdfplumber
 from sqlalchemy.orm import Session
 
-from app.models import EconYouGovCrosstab, EconYouGovReport
+from app.models import EconYouGovCrosstab, EconYouGovReport, VoteHubPoll
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +87,30 @@ async def fetch_pdf_links() -> list[str]:
     wikitext = resp.json().get("parse", {}).get("wikitext", {}).get("*", "")
     links = PDF_LINK_RE.findall(wikitext)
     # dedupe, preserve order (page lists newest first)
+    return list(dict.fromkeys(links))
+
+
+def _votehub_pdf_links(db: Session) -> list[str]:
+    """Second discovery path, mirroring the VoteHub-as-second-source fix for the
+    district scraper (PR #8). Wikipedia's citation tables are hand-maintained and
+    lag real publication by weeks (contributors don't add every report
+    promptly); VoteHub already ingests Economist/YouGov polls on its own
+    schedule and stores each poll's source PDF url, so cross-checking it catches
+    reports Wikipedia hasn't been updated with yet.
+    """
+    rows = (
+        db.query(VoteHubPoll.url)
+        .filter(VoteHubPoll.pollster.ilike("yougov"))
+        .order_by(VoteHubPoll.end_date.desc())
+        .all()
+    )
+    links: list[str] = []
+    for (url,) in rows:
+        if not url:
+            continue
+        m = PDF_LINK_RE.search(url)
+        if m:
+            links.append(m.group(0))
     return list(dict.fromkeys(links))
 
 
@@ -396,12 +420,30 @@ async def _reprocess_stale_reports(db: Session, limit: int) -> int:
 
 
 async def refresh_economist_yougov(db: Session) -> dict:
-    """Discover PDF links, download/parse any new reports, store crosstabs."""
+    """Discover PDF links, download/parse any new reports, store crosstabs.
+
+    Discovery merges two independent sources — Wikipedia's citation tables and
+    VoteHub's already-ingested YouGov polls (see `_votehub_pdf_links`) — because
+    Wikipedia alone has proven unreliable: its tables can go weeks without a new
+    citation while YouGov keeps publishing. If both sources come up empty, that
+    means discovery itself is broken (not just a quiet week with nothing new to
+    ingest), so we raise rather than let the caller record a hollow "success"
+    with item_count 0 — a source that finds nothing when reports exist is a
+    failure, not a clean run.
+    """
     try:
-        links = await fetch_pdf_links()
+        wiki_links = await fetch_pdf_links()
     except Exception as e:
-        logger.warning("Econ/YouGov link discovery failed: %s", e)
-        return {"new_reports": 0, "questions": 0}
+        logger.warning("Econ/YouGov Wikipedia discovery failed: %s", e)
+        wiki_links = []
+
+    votehub_links = _votehub_pdf_links(db)
+    links = list(dict.fromkeys(wiki_links + votehub_links))
+    if not links:
+        raise RuntimeError(
+            "Econ/YouGov discovery found zero candidate report URLs "
+            "(Wikipedia and VoteHub both empty)"
+        )
 
     existing = {r.source_url for r in db.query(EconYouGovReport.source_url).all()}
     new_links = [l for l in links if l not in existing][:MAX_REPORTS_PER_RUN]
