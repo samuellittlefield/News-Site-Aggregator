@@ -6,7 +6,7 @@ import httpx
 from sqlalchemy.orm import Session
 
 from app.models import Article, Trend
-from app.services.gdelt import query_gdelt
+from app.monitor.services.gdelt import query_gdelt
 
 logger = logging.getLogger(__name__)
 

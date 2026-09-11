@@ -4,32 +4,32 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.database import SessionLocal
-from app.services import news as news_service
-from app.services import summarizer as summarizer_service
-from app.services import trends as trends_service
-from app.services import wikipedia as wikipedia_service
-from app.services import pageviews as pageviews_service
-from app.services.velocity import compute_velocity
-from app.services import pytrends_service
-from app.services import clustering as clustering_service
-from app.services import climate as climate_service
-from app.services import regional_weather as regional_weather_service
-from app.services import news_categories as news_categories_service
-from app.services import wikipedia_trending as wikipedia_trending_service
-from app.services import reddit_trending as reddit_trending_service
-from app.services import google_trends_multi as google_trends_multi_service
-from app.services import nyt as nyt_service
-from app.services import situation_builder as situation_builder_service
+from app.monitor.services import news as news_service
+from app.monitor.services import summarizer as summarizer_service
+from app.monitor.services import trends as trends_service
+from app.monitor.services import wikipedia as wikipedia_service
+from app.monitor.services import pageviews as pageviews_service
+from app.monitor.services.velocity import compute_velocity
+from app.monitor.services import pytrends_service
+from app.monitor.services import clustering as clustering_service
+from app.monitor.services import climate as climate_service
+from app.monitor.services import regional_weather as regional_weather_service
+from app.monitor.services import news_categories as news_categories_service
+from app.monitor.services import wikipedia_trending as wikipedia_trending_service
+from app.monitor.services import reddit_trending as reddit_trending_service
+from app.monitor.services import google_trends_multi as google_trends_multi_service
+from app.monitor.services import nyt as nyt_service
+from app.monitor.services import situation_builder as situation_builder_service
 from app.shared.services import service_status as service_status_service
-from app.services import nws_alerts as nws_alerts_service
+from app.monitor.services import nws_alerts as nws_alerts_service
 from app.services import house_polls as house_polls_service
 from app.services import fec_candidates as fec_candidates_service
 from app.services import issue_tagger as issue_tagger_service
 from app.services import retirements as retirements_service
 from app.services import economist_yougov as economist_yougov_service
 from app.services import votehub as votehub_service
-from app.services import earthquakes as earthquakes_service
-from app.services import faa_status as faa_status_service
+from app.monitor.services import earthquakes as earthquakes_service
+from app.monitor.services import faa_status as faa_status_service
 from app.services import prediction_markets as prediction_markets_service
 from app.services import kalshi as kalshi_service
 from app.shared.services.source_run import record_success, record_failure, SOURCE_CADENCE
