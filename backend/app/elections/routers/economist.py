@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import EconYouGovCrosstab, EconYouGovReport
-from app.services.economist_yougov import (
+from app.elections.services.economist_yougov import (
     QUESTION_LABELS,
     QUESTION_ORDER,
     TRACKED_QUESTIONS,

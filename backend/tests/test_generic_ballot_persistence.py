@@ -8,7 +8,7 @@ can't break the district-poll refresh happening in the same job.
 import httpx
 
 from app.models import GenericBallotAggregate
-from app.services import house_polls
+from app.elections.services import house_polls
 
 WIKITEXT = (
     "{|\n"
@@ -76,7 +76,7 @@ async def test_persistence_failure_does_not_break_district_refresh(db, monkeypat
     monkeypatch.setattr(house_polls, "fetch_district_polls", fake_district_polls)
     monkeypatch.setattr(house_polls, "_persist_generic_ballot", raising_persist)
 
-    with caplog.at_level(logging.ERROR, logger="app.services.house_polls"):
+    with caplog.at_level(logging.ERROR, logger="app.elections.services.house_polls"):
         result = await house_polls.refresh_house_polls(db)
 
     assert calls["district_polls_ran"] is True

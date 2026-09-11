@@ -16,7 +16,7 @@ import pathlib
 import httpx
 import pytest
 
-from app.services import house_polls
+from app.elections.services import house_polls
 from app.models import CompetitiveDistrict, HousePoll
 
 FIX = pathlib.Path(__file__).parent / "fixtures"
@@ -61,7 +61,7 @@ async def test_find_polling_section_resolves_correct_index(respx_router):
 def test_district_without_polling_is_skipped_not_errored(caplog):
     # District 9 is still mid-primary: a primary Polling exists but no General
     # election section at all → None, and (being a plain return) no warning.
-    with caplog.at_level(logging.WARNING, logger="app.services.house_polls"):
+    with caplog.at_level(logging.WARNING, logger="app.elections.services.house_polls"):
         result = house_polls._find_polling_section(_sections(PA_SECTIONS), 9)
     assert result is None
     assert caplog.records == []
@@ -120,7 +120,7 @@ async def test_missing_page_is_logged(respx_router, caplog):
     respx_router.get(house_polls.WIKI_API).mock(
         return_value=httpx.Response(200, json={"error": {"code": "missingtitle", "info": "no page"}})
     )
-    with caplog.at_level(logging.WARNING, logger="app.services.house_polls"):
+    with caplog.at_level(logging.WARNING, logger="app.elections.services.house_polls"):
         async with httpx.AsyncClient() as client:
             sections = await house_polls._fetch_state_sections(client, "ZZ")
     assert sections == []
@@ -144,7 +144,7 @@ async def test_one_state_failure_does_not_block_others(db, respx_router, caplog)
 
     respx_router.get(house_polls.WIKI_API).mock(side_effect=responder)
 
-    with caplog.at_level(logging.WARNING, logger="app.services.house_polls"):
+    with caplog.at_level(logging.WARNING, logger="app.elections.services.house_polls"):
         total = await house_polls.fetch_district_polls(db)
 
     pa = db.query(HousePoll).filter(HousePoll.state == "PA", HousePoll.district == 8).all()

@@ -22,16 +22,16 @@ from app.monitor.services import nyt as nyt_service
 from app.monitor.services import situation_builder as situation_builder_service
 from app.shared.services import service_status as service_status_service
 from app.monitor.services import nws_alerts as nws_alerts_service
-from app.services import house_polls as house_polls_service
-from app.services import fec_candidates as fec_candidates_service
-from app.services import issue_tagger as issue_tagger_service
-from app.services import retirements as retirements_service
-from app.services import economist_yougov as economist_yougov_service
-from app.services import votehub as votehub_service
+from app.elections.services import house_polls as house_polls_service
+from app.elections.services import fec_candidates as fec_candidates_service
+from app.elections.services import issue_tagger as issue_tagger_service
+from app.elections.services import retirements as retirements_service
+from app.elections.services import economist_yougov as economist_yougov_service
+from app.elections.services import votehub as votehub_service
 from app.monitor.services import earthquakes as earthquakes_service
 from app.monitor.services import faa_status as faa_status_service
-from app.services import prediction_markets as prediction_markets_service
-from app.services import kalshi as kalshi_service
+from app.elections.services import prediction_markets as prediction_markets_service
+from app.elections.services import kalshi as kalshi_service
 from app.shared.services.source_run import record_success, record_failure, SOURCE_CADENCE
 
 logger = logging.getLogger(__name__)
