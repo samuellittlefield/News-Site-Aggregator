@@ -4,8 +4,8 @@ Written in Cowork 2026-09-11 after auditing production. Paste one bucket at a ti
 Code mode. They're ordered — buckets 1–3 are the data fixes, 4–5 are the extraction.
 
 **Spec status:** buckets 1–3 are bug fixes whose findings are specific enough to act as the
-spec, and each prompt carries the evidence inline. Buckets 4–5 are architectural and should
-get the four pipeline docs written in Cowork first — their prompts say so.
+spec, and each prompt carries the evidence inline. **Bucket 4 has full pipeline docs** as of
+2026-09-11. Bucket 5 still needs two decisions from Samuel and then its docs.
 
 ---
 
@@ -103,27 +103,57 @@ get the four pipeline docs written in Cowork first — their prompts say so.
 
 ## Bucket 4 — Extraction T1 + T2 (backend seam + scheduler split)
 
-> **Needs pipeline docs first.** These are roadmap tickets T1 (`elections-seam`) and T2
-> (`scheduler-split`) under item #9, and per `CLAUDE.md` the four docs should land in
-> `docs/features/<slug>/` before implementation. Ask me to write them in Cowork first.
+**Specs are written.** All four docs exist for both features, approved 2026-09-11. Paste
+this as-is.
+
+> Implement extraction tickets T1 then T2. Read all four docs for each before writing
+> code: `docs/features/elections-seam/` and `docs/features/scheduler-split/`. T2 depends
+> on T1 being merged first — don't interleave them.
 >
-> Once specs exist, the prompt is:
+> **T1 (`elections-seam`)** regroups `backend/app/routers/` and `backend/app/services/`
+> into `app/elections/`, `app/monitor/` and `app/shared/` (6/6/1 routers, 10/21/3
+> services — the exact mapping is a table in the implementation plan), and splits
+> `models.py` into a package. No behaviour change, no schema change, no frontend change.
 >
-> > Read `docs/features/elections-seam/` and `docs/features/scheduler-split/` — all four docs
-> > each — then implement both, seam first.
-> >
-> > T1 regroups `backend/app/routers/` and `backend/app/services/` into two bounded packages
-> > (elections/polling vs. news/trends/weather/hazards) with no behaviour change. The July
-> > feature plan confirmed there are no cross-domain imports, and I re-confirmed it on
-> > 2026-09-11 — this should be a move, not a rewrite. If you find a cross-domain import,
-> > stop and tell me; that changes the plan.
-> >
-> > T2 splits the 17 `refresh_*` jobs in `scheduler.py` into two independently-disableable
-> > groups, still in one process. Failure isolation must be unchanged — one bad upstream
-> > still can't starve the others.
-> >
-> > The full test suite passing unchanged is the acceptance bar for both. Neither ticket
-> > touches the database.
+> Two things in T1 will bite if you skim:
+> - `Base` is declared exactly once, in a new `app/models/base.py`, moved from
+>   `models.py` line 6. Not in `database.py` (it has none), not in `models/__init__.py`
+>   (circular). Three modules each calling `declarative_base()` is the failure mode this
+>   ticket is most likely to hit, and TC-5 is the test that catches it.
+> - `alembic/env.py` line 23 does `from app.models import Base`. The new
+>   `__init__.py` must re-export `Base` as well as the 25 model classes, or every
+>   migration breaks while the obvious tests stay green (TC-7).
+>
+> The acceptance bar for T1 is an **empty** `alembic revision --autogenerate` diff plus
+> a green suite whose only test-file edits are import paths. If you find yourself
+> changing an assertion to make something pass, stop — the refactor altered behaviour
+> and that's a failure, not a fix.
+>
+> **T2 (`scheduler-split`)** grows `SOURCE_CADENCE` into a full job registry and derives
+> all three job enumerations from it, then gates registration by domain. The
+> consolidation is the substance; the split falls out of it.
+>
+> Context worth having: the job set is currently enumerated in four hand-maintained
+> places that already disagree — `SOURCE_CADENCE` (17), `start_scheduler` (17),
+> `_startup_refresh` (15), `_do_full_refresh` (12). `_do_full_refresh` is what the
+> public Refresh button calls, and it omits every election-side job, so clicking
+> Refresh today refreshes no polling data. Fixing that is part of the ticket.
+>
+> `POST /api/refresh` stays public and cheap (monitor jobs only) and starts naming the
+> domains it refreshed. Election jobs get `POST /api/refresh/elections` behind the
+> existing `require_admin_key`, with an in-flight guard returning **409** on overlap —
+> not 429, the problem is overlap rather than frequency. Reasoning is in the T2 feature
+> plan's Open Questions; don't re-litigate it, but do flag it if implementation shows
+> it's wrong.
+>
+> If time runs short, T2 steps 1-5 are a shippable unit on their own — they fix the
+> live `/api/refresh` bug without the split.
+>
+> Both tickets: follow `CLAUDE.md` — PR, CI green, merge, then update `docs/ROADMAP.md`
+> (T1/T2 → shipped with PR links). T1 also delivers the "autogenerate produces empty
+> diff" chore from the roadmap's Later section, so strike that too. While you're in
+> `SOURCES.md`, fix its stale "The Python runtime is 3.9" line — Railway and CI both
+> run 3.11.
 
 ---
 

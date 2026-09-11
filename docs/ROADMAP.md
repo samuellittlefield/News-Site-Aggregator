@@ -6,7 +6,7 @@ single place to see where everything stands.
 
 **Statuses:** `idea` → `planned` (pipeline docs in progress) → `in progress` (implementation) → `shipped`
 
-_Last updated: 2026-09-11_
+_Last updated: 2026-09-11 (bucket 4 specs)_
 
 ## Now
 
@@ -37,10 +37,23 @@ the database; the rest deliver operational independence that is invisible from o
 the existing unsplit build instead. The failure mode to avoid is being half-migrated on
 election night.
 
+**Status 2026-09-11:** T1 and T2 have all four pipeline docs written and approved
+(`docs/features/elections-seam/`, `docs/features/scheduler-split/`) and are ready for Claude
+Code — the kickoff prompt is bucket 4 in `docs/features/_kickoff-prompts.md`. T3 and T5a are
+blocked on two decisions: what the polling product is called, and what the Dashboard becomes
+on each side.
+
+Grounding re-verified 2026-09-11 while speccing: still **zero elections↔monitor imports**
+(the one candidate edge, three monitor services importing `services/topic_matcher.py`, is a
+domain-free string matcher, not real coupling). The actual coupling is `models.py` — 25
+classes in one file sharing one `Base` — which T1 splits while keeping that single `Base`.
+Job domains split **8 elections / 8 monitor / 1 shared**, not the 5/12 implied by what
+`/api/refresh` omits.
+
 | Ticket | Item | Slug | Status | Target |
 |---|---|---|---|---|
-| T1 | Draw the backend seam — regroup `routers/` + `services/` into two bounded packages, no behaviour change | `elections-seam` | planned | before election |
-| T2 | Split the scheduler into two independently-disableable job groups (still one process) | `scheduler-split` | planned | before election |
+| T1 | Draw the backend seam — regroup `routers/` + `services/` into two bounded packages, no behaviour change | `elections-seam` | **specced** | before election |
+| T2 | Split the scheduler into two independently-disableable job groups (still one process) | `scheduler-split` | **specced** | before election |
 | T3 | Split `client.ts` into two domain modules + two nav shells, absorbing item #5's TanStack Query migration | `frontend-domain-split` | planned | before election |
 | T5a | Second Vercel project + domain for the polling app, same API and database | `polling-front-door` | planned | before election |
 | T4 | Second Postgres + fresh Alembic history, migrate elections tables and data | `elections-database` | idea | after election |
@@ -60,7 +73,7 @@ fire".
 | 10 | Fix Economist/YouGov report discovery | `economist-discovery-fix` | planned | **Blocker.** Latest stored report is fieldwork 2026-07-25/27, fetched 2026-08-02 — 46 days stale. The 12h job runs and records `success` with `item_count: 0`. Provably ours, not upstream: VoteHub carries a YouGov/Economist generic-ballot poll fielded 2026-09-04/08 whose source URL is `econTabReport_SlcWdVd.pdf`, same CloudFront host `economist_yougov.py` discovers via Wikipedia. Reports are being published; discovery stopped finding them. Same failure shape as PR #8. Feeds `ApprovalSection` + crosstabs on the Polls tab |
 | 11 | Staleness labelling on poll cards | `poll-staleness-labels` | idea | VoteHub's approval stream is 14 days stale **upstream** — verified against `api.votehub.com/polls?poll_type=approval`: 2,945 rows, newest end_date 2026-08-28, while their generic-ballot stream was current to 09-08. Not fixable in `votehub.py`. The approval average is built from 5 polls in a 21-day window and shown with no indication of age. Options: visible "fieldwork through X" label, a second approval source, or hide the card past a staleness threshold |
 | 12 | District poll data quality cleanup | `district-poll-data-quality` | idea | Wikipedia stream (`house_polls.py`): 3 rows dated in the future (end_date 2026-09-28, seen 09-11); 82 of 112 rows null on `start_date`/`source_url`/`sample_size`; markup bleeding into the pollster field (`Emerson Collegename=NPI`, truncated footnote text ending mid-word); pollster-name variants defeating dedup (`SurveyUSA` vs `Survey USA` — 9 duplicate groups / 20 rows). Coverage 37 of 435 districts. All cosmetically visible on the district map and carousel |
-| 13 | `SourceRun` staleness detection | `sourcerun-staleness` | idea | `status: success` + `item_count: 0` is indistinguishable from broken — three polling jobs show it, only one is actually broken. Structurally the same bug as the 2026-07-21 forecast swing fallback, one layer up: PR #11 taught the *model* to report which tier it landed on, the *ingestion* layer never learned it. `SourceRun` already stores `cadence_minutes`; add an expected-freshness threshold per source and make "ran clean, produced nothing new for N cycles" a distinct state from success |
+| 13 | `SourceRun` staleness detection | `sourcerun-staleness` | idea (see T2 — the job registry it adds is the natural place to hang this) | `status: success` + `item_count: 0` is indistinguishable from broken — three polling jobs show it, only one is actually broken. Structurally the same bug as the 2026-07-21 forecast swing fallback, one layer up: PR #11 taught the *model* to report which tier it landed on, the *ingestion* layer never learned it. `SourceRun` already stores `cadence_minutes`; add an expected-freshness threshold per source and make "ran clean, produced nothing new for N cycles" a distinct state from success |
 
 ## Later / chores
 
@@ -69,9 +82,9 @@ fire".
 | Python version cleanup: rebuild local venv on 3.11, drop 3.9 syntax constraint, update pipeline skill | idea (overdue) | Resolved 2026-07-02: Railway runs 3.11.x; CI pins 3.11. Local venv still 3.9 until rebuilt |
 | Add `FEC_API_KEY` to `backend/.env.example` | idea | Key exists in `.env` but not the example — violates repo convention |
 | Add a README | idea | No README at repo root |
-| Update `news-site-feature-pipeline` skill — conventions are stale | idea | Skill still says "no test harness yet" (pytest + CI shipped, PR #7) and "backend runs 3.9" (Railway + CI are 3.11), and has no Alembic migration checklist. Update via Settings > Capabilities |
+| Update `news-site-feature-pipeline` skill — conventions are stale | done 2026-09-11 | Skill still says "no test harness yet" (pytest + CI shipped, PR #7) and "backend runs 3.9" (Railway + CI are 3.11), and has no Alembic migration checklist. Update via Settings > Capabilities |
 | Vitest / frontend unit tests | idea | Deferred from `test-harness-ci` non-goals |
-| "Autogenerate produces empty diff" CI check (model/migration drift) | idea (unblocked) | Deferred from `alembic-migrations`; #1 + #2 both shipped, so this is now buildable in `backend/tests/` + `ci.yml` |
+| "Autogenerate produces empty diff" CI check (model/migration drift) | folded into T1 | Deferred from `alembic-migrations`. Now specced as part of `elections-seam` (AC-5 / TC-8), which needs the same check as its own acceptance bar — strike this row when T1 ships |
 | `ModelForecast` ingest for Split Ticket (per `SOURCES.md` forecasting sweep) | idea | Blocked on confirming a stable data endpoint |
 
 ## Parked
