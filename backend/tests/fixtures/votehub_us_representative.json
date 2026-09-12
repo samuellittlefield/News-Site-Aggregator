@@ -15,5 +15,124 @@
       {"choice": "Nick Begich III", "pct": 46.0},
       {"choice": "Matt Schultz", "pct": 39.0}
     ]
+  },
+  {
+    "id": "co03-cnn-2026-07",
+    "poll_type": "us-representative",
+    "seat_name": "CO-03",
+    "pollster": "CNN",
+    "sponsors": [],
+    "partisan": "REP",
+    "start_date": "2026-07-10",
+    "end_date": "2026-07-12",
+    "sample_size": 500,
+    "population": "lv",
+    "url": "https://example.com/polls/co03-cnn",
+    "answers": [
+      {"choice": "Jeff Hurd", "pct": 48.0},
+      {"choice": "Adam Frisch", "pct": 44.0}
+    ]
+  },
+  {
+    "id": "wi03-marquette-2026-07",
+    "poll_type": "us-representative",
+    "seat_name": "WI-03",
+    "pollster": "Marquette Law School",
+    "sponsors": [],
+    "partisan": "REP",
+    "start_date": "2026-07-15",
+    "end_date": "2026-07-18",
+    "sample_size": 700,
+    "population": "lv",
+    "url": "https://example.com/polls/wi03-marquette",
+    "answers": [
+      {"choice": "Derrick Van Orden", "pct": 50.0},
+      {"choice": "Rebecca Cooke", "pct": 46.0}
+    ]
+  },
+  {
+    "id": "fl27-fau-2026-06",
+    "poll_type": "us-representative",
+    "seat_name": "FL-27",
+    "pollster": "FAU",
+    "sponsors": [],
+    "partisan": "REP",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-27",
+    "sample_size": 450,
+    "population": "rv",
+    "url": "https://example.com/polls/fl27-fau",
+    "answers": [
+      {"choice": "María Elvira Salazar", "pct": 52.0},
+      {"choice": "Kristen Gonzalez", "pct": 44.0}
+    ]
+  },
+  {
+    "id": "ia01-selzer-2026-06",
+    "poll_type": "us-representative",
+    "seat_name": "IA-01",
+    "pollster": "Selzer & Co",
+    "sponsors": [],
+    "partisan": "DEM",
+    "start_date": "2026-06-18",
+    "end_date": "2026-06-21",
+    "sample_size": 600,
+    "population": "lv",
+    "url": "https://example.com/polls/ia01-selzer",
+    "answers": [
+      {"choice": "Mariannette Miller-Meeks", "pct": 49.0},
+      {"choice": "Christina Bohannan", "pct": 47.0}
+    ]
+  },
+  {
+    "id": "oh15-baldwin-2026-08",
+    "poll_type": "us-representative",
+    "seat_name": "OH-15",
+    "pollster": "Baldwin Wallace",
+    "sponsors": [],
+    "partisan": "DEM",
+    "start_date": "2026-08-01",
+    "end_date": "2026-08-04",
+    "sample_size": 550,
+    "population": "lv",
+    "url": "https://example.com/polls/oh15-baldwin",
+    "answers": [
+      {"choice": "John Smith", "pct": 45.0},
+      {"choice": "Pat Jones", "pct": 43.0}
+    ]
+  },
+  {
+    "id": "tx28-uh-2026-07",
+    "poll_type": "us-representative",
+    "seat_name": "TX-28",
+    "pollster": "University of Houston",
+    "sponsors": [],
+    "partisan": "DEM",
+    "start_date": "2026-07-05",
+    "end_date": "2026-07-08",
+    "sample_size": 500,
+    "population": "rv",
+    "url": "https://example.com/polls/tx28-uh",
+    "answers": [
+      {"choice": "Maria Garcia", "pct": 47.0},
+      {"choice": "Luis Hernandez", "pct": 45.0}
+    ]
+  },
+  {
+    "id": "ny21-monmouth-2026-06",
+    "poll_type": "us-representative",
+    "seat_name": "NY-21",
+    "pollster": "Monmouth",
+    "sponsors": [],
+    "partisan": "REP",
+    "start_date": "2026-06-12",
+    "end_date": "2026-06-14",
+    "sample_size": 400,
+    "population": "lv",
+    "url": "https://example.com/polls/ny21-monmouth",
+    "answers": [
+      {"choice": "Rep", "pct": 48.0},
+      {"choice": "Dem", "pct": 45.0}
+    ]
   }
 ]
