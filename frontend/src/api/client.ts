@@ -397,16 +397,19 @@ export interface SourceRun {
 export function useSourceRuns() {
   const [sources, setSources] = useState<SourceRun[]>([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    get<SourceRun[]>("/api/status/sources")
-      .then(d => { setSources(d); setLoading(false); })
-      .catch(() => setLoading(false));
-    const id = setInterval(() => {
-      get<SourceRun[]>("/api/status/sources").then(setSources).catch(() => {});
-    }, 5 * 60 * 1000);
-    return () => clearInterval(id);
-  }, []);
-  return { sources, loading };
+
+  // Gated behind the admin key (status-endpoint-auth) — it exposes our own
+  // per-source error_message. No internal polling loop here: this fetch must
+  // go through AdminPage's admin-key gate (prompted on page load, not on
+  // first write), so AdminPage drives calling `refresh()` via that gate
+  // instead of this hook self-fetching on mount.
+  const refresh = async () => {
+    const data = await adminGet<SourceRun[]>("/api/status/sources");
+    setSources(data);
+    setLoading(false);
+  };
+
+  return { sources, loading, refresh };
 }
 
 export function useAstronomy() {
@@ -739,6 +742,11 @@ async function adminFetch(path: string, init: RequestInit): Promise<Response> {
   }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res;
+}
+
+async function adminGet<T>(path: string): Promise<T> {
+  const res = await adminFetch(path, { method: "GET" });
+  return res.json() as Promise<T>;
 }
 
 export async function confirmTag(candidateId: number, tagId: number): Promise<void> {

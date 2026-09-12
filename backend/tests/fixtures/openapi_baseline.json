@@ -661,7 +661,7 @@
         "properties": {
           "candidates": {
             "items": {
-              "$ref": "#/components/schemas/app__routers__polls__CandidateOut"
+              "$ref": "#/components/schemas/app__elections__routers__polls__CandidateOut"
             },
             "title": "Candidates",
             "type": "array"
@@ -2280,7 +2280,7 @@
           },
           "articles": {
             "items": {
-              "$ref": "#/components/schemas/app__routers__trends__ArticleOut"
+              "$ref": "#/components/schemas/app__monitor__routers__trends__ArticleOut"
             },
             "title": "Articles",
             "type": "array"
@@ -2940,7 +2940,7 @@
         "title": "WikiPageOut",
         "type": "object"
       },
-      "app__routers__candidates__CandidateOut": {
+      "app__elections__routers__candidates__CandidateOut": {
         "properties": {
           "confirmed_issues": {
             "default": [],
@@ -3097,7 +3097,7 @@
         "title": "CandidateOut",
         "type": "object"
       },
-      "app__routers__markets__SnapshotOut": {
+      "app__elections__routers__markets__SnapshotOut": {
         "properties": {
           "captured_at": {
             "format": "date-time",
@@ -3123,7 +3123,69 @@
         "title": "SnapshotOut",
         "type": "object"
       },
-      "app__routers__news__ArticleOut": {
+      "app__elections__routers__polls__CandidateOut": {
+        "description": "One candidate in a district. Deliberately an extensible object so future\n'resources' (bio, links, issue tags, news) attach as new fields without\nreshaping the map payload.",
+        "properties": {
+          "fec_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fec Id"
+          },
+          "fundraising_total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fundraising Total"
+          },
+          "incumbent_challenge": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incumbent Challenge"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "party": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Party"
+          }
+        },
+        "required": [
+          "name",
+          "party",
+          "incumbent_challenge",
+          "fundraising_total",
+          "fec_id"
+        ],
+        "title": "CandidateOut",
+        "type": "object"
+      },
+      "app__monitor__routers__news__ArticleOut": {
         "properties": {
           "ai_summary": {
             "anyOf": [
@@ -3207,69 +3269,7 @@
         "title": "ArticleOut",
         "type": "object"
       },
-      "app__routers__polls__CandidateOut": {
-        "description": "One candidate in a district. Deliberately an extensible object so future\n'resources' (bio, links, issue tags, news) attach as new fields without\nreshaping the map payload.",
-        "properties": {
-          "fec_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fec Id"
-          },
-          "fundraising_total": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fundraising Total"
-          },
-          "incumbent_challenge": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Incumbent Challenge"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "party": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Party"
-          }
-        },
-        "required": [
-          "name",
-          "party",
-          "incumbent_challenge",
-          "fundraising_total",
-          "fec_id"
-        ],
-        "title": "CandidateOut",
-        "type": "object"
-      },
-      "app__routers__trends__ArticleOut": {
+      "app__monitor__routers__trends__ArticleOut": {
         "properties": {
           "description": {
             "anyOf": [
@@ -3343,7 +3343,7 @@
         "title": "ArticleOut",
         "type": "object"
       },
-      "app__routers__trends__SnapshotOut": {
+      "app__monitor__routers__trends__SnapshotOut": {
         "properties": {
           "captured_at": {
             "format": "date-time",
@@ -3484,7 +3484,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/app__routers__candidates__CandidateOut"
+                    "$ref": "#/components/schemas/app__elections__routers__candidates__CandidateOut"
                   },
                   "title": "Response List Candidates Api Candidates Get",
                   "type": "array"
@@ -4212,7 +4212,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/app__routers__markets__SnapshotOut"
+                    "$ref": "#/components/schemas/app__elections__routers__markets__SnapshotOut"
                   },
                   "title": "Response Market History Api Markets  Market Id  History Get",
                   "type": "array"
@@ -4268,7 +4268,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/app__routers__news__ArticleOut"
+                    "$ref": "#/components/schemas/app__monitor__routers__news__ArticleOut"
                   },
                   "title": "Response Get News Api News  Category  Get",
                   "type": "array"
@@ -4436,8 +4436,26 @@
     },
     "/api/status/sources": {
       "get": {
-        "description": "Per-source ingestion health (feature: ingestion-health).\n\nReturns exactly one entry per registered scheduler job \u2014 the canonical list\ncomes from `SOURCE_CADENCE`, not the live `scheduler` object, so it stays\ncorrect even when the scheduler is gated off (e.g. DISABLE_SCHEDULER=1 in\ntests). Any registered source without a `SourceRun` row yet is synthesised as\na distinct `never_run` entry rather than omitted (AC-6).",
+        "description": "Per-source ingestion health (feature: ingestion-health).\n\nGated behind the admin key (status-endpoint-auth): unlike GET /api/status\n(third-party statuspage data, deliberately public), this exposes our own\n`error_message` per source \u2014 e.g. \"Economist/YouGov \u00b7 failing \u00b7 last\nerror: \u2026\" \u2014 which is not something an anonymous visitor should be able to\nread on a site whose credibility is the product.\n\nReturns exactly one entry per registered scheduler job \u2014 the canonical list\ncomes from `SOURCE_CADENCE`, not the live `scheduler` object, so it stays\ncorrect even when the scheduler is gated off (e.g. DISABLE_SCHEDULER=1 in\ntests). Any registered source without a `SourceRun` row yet is synthesised as\na distinct `never_run` entry rather than omitted (AC-6).",
         "operationId": "get_source_runs_api_status_sources_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Admin-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -4452,6 +4470,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Get Source Runs",
@@ -4718,7 +4746,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/app__routers__trends__SnapshotOut"
+                    "$ref": "#/components/schemas/app__monitor__routers__trends__SnapshotOut"
                   },
                   "title": "Response Get Trend History Api Trends  Trend Id  History Get",
                   "type": "array"
