@@ -1,0 +1,35 @@
+[
+  {"state": "AK", "district_number": 0, "name": "Begich, Nick", "party_full": "REPUBLICAN PARTY", "incumbent_challenge": "I", "has_raised_funds": true},
+  {"state": "AK", "district_number": 0, "name": "Schultz, Matt", "party_full": "DEMOCRATIC PARTY", "incumbent_challenge": "C", "has_raised_funds": true},
+  {"state": "AK", "district_number": 0, "name": "Toien, Billy", "party_full": "LIBERTARIAN PARTY", "incumbent_challenge": "C", "has_raised_funds": false},
+
+  {"state": "CO", "district_number": 3, "name": "Hurd, Jeffrey", "party_full": "REPUBLICAN PARTY", "incumbent_challenge": "C", "has_raised_funds": true},
+  {"state": "CO", "district_number": 3, "name": "Frisch, Adam", "party_full": "DEMOCRATIC PARTY", "incumbent_challenge": "C", "has_raised_funds": true},
+  {"state": "CO", "district_number": 3, "name": "Sonnenberg, Jerry", "party_full": "REPUBLICAN PARTY", "incumbent_challenge": "O", "has_raised_funds": false},
+
+  {"state": "WI", "district_number": 3, "name": "Van Orden, Derrick", "party_full": "REPUBLICAN PARTY", "incumbent_challenge": "I", "has_raised_funds": true},
+  {"state": "WI", "district_number": 3, "name": "Cooke, Rebecca", "party_full": "DEMOCRATIC PARTY", "incumbent_challenge": "C", "has_raised_funds": true},
+  {"state": "WI", "district_number": 3, "name": "Toft, Ann", "party_full": "DEMOCRATIC PARTY", "incumbent_challenge": "O", "has_raised_funds": false},
+
+  {"state": "FL", "district_number": 27, "name": "Salazar, Maria Elvira", "party_full": "REPUBLICAN PARTY", "incumbent_challenge": "I", "has_raised_funds": true},
+  {"state": "FL", "district_number": 27, "name": "Gonzalez, Kristen", "party_full": "DEMOCRATIC PARTY", "incumbent_challenge": "C", "has_raised_funds": true},
+  {"state": "FL", "district_number": 27, "name": "Hernandez, Angel", "party_full": "DEMOCRATIC PARTY", "incumbent_challenge": "O", "has_raised_funds": false},
+
+  {"state": "IA", "district_number": 1, "name": "Miller-Meeks, Mariannette Jane", "party_full": "REPUBLICAN PARTY", "incumbent_challenge": "I", "has_raised_funds": true},
+  {"state": "IA", "district_number": 1, "name": "Bohannan, Christina", "party_full": "DEMOCRATIC PARTY", "incumbent_challenge": "C", "has_raised_funds": true},
+  {"state": "IA", "district_number": 1, "name": "Weiner, David", "party_full": "LIBERTARIAN PARTY", "incumbent_challenge": "O", "has_raised_funds": false},
+
+  {"state": "OH", "district_number": 15, "name": "Smith, John Robert", "party_full": "DEMOCRATIC PARTY", "incumbent_challenge": "C", "has_raised_funds": true},
+  {"state": "OH", "district_number": 15, "name": "Smith, John Michael", "party_full": "REPUBLICAN PARTY", "incumbent_challenge": "C", "has_raised_funds": true},
+  {"state": "OH", "district_number": 15, "name": "Jones, Pat", "party_full": "REPUBLICAN PARTY", "incumbent_challenge": "O", "has_raised_funds": true},
+  {"state": "OH", "district_number": 15, "name": "Barrington, Brennan", "party_full": "INDEPENDENT", "incumbent_challenge": "O", "has_raised_funds": false},
+
+  {"state": "TX", "district_number": 28, "name": "Garcia, Ana", "party_full": "DEMOCRATIC PARTY", "incumbent_challenge": "C", "has_raised_funds": true},
+  {"state": "TX", "district_number": 28, "name": "Garcia, Luis", "party_full": "REPUBLICAN PARTY", "incumbent_challenge": "C", "has_raised_funds": true},
+  {"state": "TX", "district_number": 28, "name": "Hernandez, Luis", "party_full": "REPUBLICAN PARTY", "incumbent_challenge": "O", "has_raised_funds": true},
+  {"state": "TX", "district_number": 28, "name": "Garcia, Pedro", "party_full": "INDEPENDENT", "incumbent_challenge": "O", "has_raised_funds": false},
+
+  {"state": "NY", "district_number": 21, "name": "Smith, Alice", "party_full": "REPUBLICAN PARTY", "incumbent_challenge": "I", "has_raised_funds": true},
+  {"state": "NY", "district_number": 21, "name": "Jones, Bob", "party_full": "DEMOCRATIC PARTY", "incumbent_challenge": "C", "has_raised_funds": true},
+  {"state": "NY", "district_number": 21, "name": "Schmidt, Chris", "party_full": "DEMOCRATIC PARTY", "incumbent_challenge": "O", "has_raised_funds": false}
+]
