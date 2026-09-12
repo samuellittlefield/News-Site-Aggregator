@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import {
   AdminAuthError,
   CandidateSummary,
@@ -17,8 +17,12 @@ import { ServiceStatusSection } from "../components/ServiceStatusSection";
 import { SourceHealthSection, summarizeSourceHealth } from "../components/SourceHealthSection";
 
 // ── Admin key gate ────────────────────────────────────────────────────────────
-// Prompts for the X-Admin-Key once per session (in memory only) on the first
-// write attempt, and re-prompts with a visible error if the backend 401s.
+// Prompts for the X-Admin-Key once per session (in memory only). Since
+// status-endpoint-auth (roadmap #16) gated GET /api/status/sources — it
+// exposes our own per-source error_message, not public data — the prompt now
+// fires on /admin page load (the sources fetch below), not only on the first
+// write attempt; either path re-prompts with a visible error if the backend
+// 401s.
 
 interface AdminGateContextValue {
   runAdminAction: (action: () => Promise<void>) => Promise<void>;
@@ -362,9 +366,10 @@ function CandidateBrowserTab() {
 }
 
 // ── Health summary banner ─────────────────────────────────────────────────────
-// Read-only, no admin key needed (AC-9) — reuses SourceHealthSection's own
-// classify()-derived aggregate so the count here can't drift from the cards
-// below it (AC-3).
+// Purely presentational — takes the already-fetched `sources` prop rather
+// than making its own call, so it doesn't duplicate the admin-key gate above
+// it. Reuses SourceHealthSection's own classify()-derived aggregate so the
+// count here can't drift from the cards below it (AC-3).
 
 function HealthSummaryBanner({ sources, loading }: { sources: SourceRun[]; loading: boolean }) {
   if (loading || sources.length === 0) return null;
@@ -393,7 +398,19 @@ type AdminTab = "candidates" | "pending";
 export function AdminPage() {
   const [tab, setTab] = useState<AdminTab>("candidates");
   const gate = useAdminGate();
-  const { sources, loading: sourcesLoading } = useSourceRuns();
+  const { sources, loading: sourcesLoading, refresh: refreshSources } = useSourceRuns();
+
+  // status-endpoint-auth: the sources fetch is gated, so prompt for the key
+  // on page load (via the same gate write actions use) rather than waiting
+  // for a write. Re-runs on the same 5-minute cadence the old self-polling
+  // hook used; if the key is missing or wrong, the gate re-prompts each
+  // cycle rather than failing silently.
+  useEffect(() => {
+    gate.runAdminAction(refreshSources);
+    const id = setInterval(() => { gate.runAdminAction(refreshSources); }, 5 * 60 * 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <AdminGateContext.Provider value={{ runAdminAction: gate.runAdminAction }}>
@@ -402,7 +419,7 @@ export function AdminPage() {
           <div className="space-y-1">
             <h2 className="text-xl font-bold text-white tracking-tight">Election Intelligence — Status &amp; Admin</h2>
             <p className="text-xs text-gray-600">
-              Internal use only. The health sections below are read-only and need no admin key — the key is only needed to confirm/reject a tag or add one manually.
+              Internal use only. The candidate browser and tag review need the admin key to make changes; the data-sources health view below needs it just to read.
             </p>
           </div>
 

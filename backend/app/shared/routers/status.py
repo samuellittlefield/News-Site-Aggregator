@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.auth import require_admin_key
 from app.database import get_db
 from app.models import ServiceStatus, SourceRun
 from app.shared.services.service_status import INDICATOR_ORDER
@@ -43,9 +44,15 @@ def get_statuses(db: Session = Depends(get_db)):
     return rows
 
 
-@router.get("/sources", response_model=List[SourceRunOut])
+@router.get("/sources", response_model=List[SourceRunOut], dependencies=[Depends(require_admin_key)])
 def get_source_runs(db: Session = Depends(get_db)):
     """Per-source ingestion health (feature: ingestion-health).
+
+    Gated behind the admin key (status-endpoint-auth): unlike GET /api/status
+    (third-party statuspage data, deliberately public), this exposes our own
+    `error_message` per source — e.g. "Economist/YouGov · failing · last
+    error: …" — which is not something an anonymous visitor should be able to
+    read on a site whose credibility is the product.
 
     Returns exactly one entry per registered scheduler job — the canonical list
     comes from `SOURCE_CADENCE`, not the live `scheduler` object, so it stays
