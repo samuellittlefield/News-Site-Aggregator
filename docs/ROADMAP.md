@@ -6,7 +6,7 @@ single place to see where everything stands.
 
 **Statuses:** `idea` → `planned` (pipeline docs in progress) → `in progress` (implementation) → `shipped`
 
-_Last updated: 2026-09-11 (economist-discovery-fix shipped, PR #13)_
+_Last updated: 2026-09-11 (elections-seam T1 shipped, PR #14)_
 
 ## Now
 
@@ -37,11 +37,11 @@ the database; the rest deliver operational independence that is invisible from o
 the existing unsplit build instead. The failure mode to avoid is being half-migrated on
 election night.
 
-**Status 2026-09-11:** T1 and T2 have all four pipeline docs written and approved
-(`docs/features/elections-seam/`, `docs/features/scheduler-split/`) and are ready for Claude
-Code — the kickoff prompt is bucket 4 in `docs/features/_kickoff-prompts.md`. T3 and T5a are
-blocked on two decisions: what the polling product is called, and what the Dashboard becomes
-on each side.
+**Status 2026-09-11:** T1 shipped (PR #14) — see its row below. T2 has all four pipeline docs
+written and approved (`docs/features/scheduler-split/`) and is ready for Claude Code, per T1's
+explicit dependency (T2 changes a public endpoint's behaviour and needed the seam to exist
+first). T3 and T5a are blocked on two decisions: what the polling product is called, and what
+the Dashboard becomes on each side.
 
 Grounding re-verified 2026-09-11 while speccing: still **zero elections↔monitor imports**
 (the one candidate edge, three monitor services importing `services/topic_matcher.py`, is a
@@ -52,7 +52,7 @@ Job domains split **8 elections / 8 monitor / 1 shared**, not the 5/12 implied b
 
 | Ticket | Item | Slug | Status | Target |
 |---|---|---|---|---|
-| T1 | Draw the backend seam — regroup `routers/` + `services/` into two bounded packages, no behaviour change | `elections-seam` | **specced** | before election |
+| T1 | Draw the backend seam — regroup `routers/` + `services/` into two bounded packages, no behaviour change | `elections-seam` | shipped | PR [#14](https://github.com/samuellittlefield/News-Site-Aggregator/pull/14). 47 modules regrouped into `app/elections/` (6 routers, 10 services), `app/monitor/` (6 routers, 21 services), `app/shared/` (1 router, 3 services) — exact match to the implementation plan's table. `models.py` split into a package (`elections.py`/`monitor.py`/`shared.py`), single `Base` in `app/models/base.py`, re-exported (with all 25 classes) from `__init__.py` so both `from app.models import X` and `alembic/env.py`'s `from app.models import Base` keep resolving. Verified locally before CI: one `Base`/one `MetaData` (25 tables), `alembic upgrade head` clean from empty, `autogenerate` empty diff — also wired that check into CI (closes the "autogenerate produces empty diff" chore, struck below). New `test_module_boundaries.py` AST-scans for cross-domain imports and was verified to actually fail on a deliberate violation, then reverted. Two things the docs didn't anticipate: three files resolved vendored CSVs via a path relative to their own file location, broken one directory level deeper (fixed, no data moved); and FastAPI's OpenAPI schema-name disambiguation folds in `__module__`, so 6 of 46 component names changed form when their router files moved (real JSON responses unaffected — verified via a pre-refactor baseline captured from a git worktree, `test_openapi_baseline.py`). No route/response/schema/frontend changes. Full suite 79 passed (59 pre-existing + 20 new); live-smoked one route per domain plus `/api/refresh` and the admin auth gate. T2 not started, per dependency |
 | T2 | Split the scheduler into two independently-disableable job groups (still one process) | `scheduler-split` | **specced** | before election |
 | T3 | Split `client.ts` into two domain modules + two nav shells, absorbing item #5's TanStack Query migration | `frontend-domain-split` | planned | before election |
 | T5a | Second Vercel project + domain for the polling app, same API and database | `polling-front-door` | planned | before election |
@@ -84,7 +84,6 @@ fire".
 | Add a README | idea | No README at repo root |
 | Update `news-site-feature-pipeline` skill — conventions are stale | done 2026-09-11 | Skill still says "no test harness yet" (pytest + CI shipped, PR #7) and "backend runs 3.9" (Railway + CI are 3.11), and has no Alembic migration checklist. Update via Settings > Capabilities |
 | Vitest / frontend unit tests | idea | Deferred from `test-harness-ci` non-goals |
-| "Autogenerate produces empty diff" CI check (model/migration drift) | folded into T1 | Deferred from `alembic-migrations`. Now specced as part of `elections-seam` (AC-5 / TC-8), which needs the same check as its own acceptance bar — strike this row when T1 ships |
 | `ModelForecast` ingest for Split Ticket (per `SOURCES.md` forecasting sweep) | idea | Blocked on confirming a stable data endpoint |
 | Ballot measures / propositions as a data source | idea | Raised 2026-09-11. Coverage of what people actually vote on beyond candidates — CA propositions and other states' ballot measures — framed by *impact* rather than horse race. **Bearing on naming:** this would make the extracted product broader than "polling," so the T5a domain decision should wait until this direction is settled. Placeholder display name until then: "Elections" (already the internal package name). No upstream source identified yet |
 
