@@ -6,6 +6,7 @@ import {
   useEconTrend,
 } from "../api/client";
 import { prettyGroup, prettyLabel } from "../lib/econLabels";
+import { isStale } from "../lib/pollStaleness";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "";
@@ -156,6 +157,11 @@ export function ApprovalSection() {
           Economist/YouGov · {fmtDate(latest.end_date)}
           {latest.sample_size ? ` · n=${latest.sample_size.toLocaleString()}` : ""}
         </span>
+        {isStale(latest.end_date) && (
+          <span className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-100 border border-amber-300 rounded-lg px-2 py-0.5 normal-case">
+            <span aria-hidden>⚠</span> Stale
+          </span>
+        )}
       </div>
 
       {/* Question switcher */}

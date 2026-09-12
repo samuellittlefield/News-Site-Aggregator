@@ -797,6 +797,10 @@ export interface ApprovalAverage {
   net: number;
   n_polls: number;
   window_days: number;
+  // Additive (poll-staleness-labels) — provenance for the window this average
+  // was actually built from, not the newest/oldest poll in the whole table.
+  newest_fieldwork_end?: string | null;
+  oldest_fieldwork_end?: string | null;
 }
 
 export interface GenericBallotAverage {
@@ -805,6 +809,8 @@ export interface GenericBallotAverage {
   margin: number;
   n_polls: number;
   window_days: number;
+  newest_fieldwork_end?: string | null;
+  oldest_fieldwork_end?: string | null;
 }
 
 export interface VoteHubApprovalSet {
