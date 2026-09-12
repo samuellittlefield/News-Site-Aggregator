@@ -15,8 +15,8 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.services import forecast_constants as MC
-from app.services.forecast_model import run_model
+from app.elections.services import forecast_constants as MC
+from app.elections.services.forecast_model import run_model
 
 logger = logging.getLogger(__name__)
 

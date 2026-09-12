@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import ServiceStatus, SourceRun
-from app.services.service_status import INDICATOR_ORDER
-from app.services.source_run import SOURCE_CADENCE
+from app.shared.services.service_status import INDICATOR_ORDER
+from app.shared.services.source_run import SOURCE_CADENCE
 
 router = APIRouter(prefix="/api/status", tags=["status"])
 

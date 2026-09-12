@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.auth import require_admin_key
 from app.database import get_db
 from app.models import Candidate, CandidateIssueTag
-from app.services.issue_tagger import ISSUE_TAXONOMY
+from app.elections.services.issue_tagger import ISSUE_TAXONOMY
 
 router = APIRouter(prefix="/api/candidates", tags=["candidates"])
 

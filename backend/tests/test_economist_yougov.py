@@ -24,7 +24,7 @@ import pytest
 
 from app import scheduler
 from app.models import EconYouGovCrosstab, EconYouGovReport, SourceRun, VoteHubPoll
-from app.services import economist_yougov
+from app.elections.services import economist_yougov
 
 FIX = pathlib.Path(__file__).parent / "fixtures"
 APPROVAL_PAGE = (FIX / "economist_yougov_approval_page.wikitext").read_text()

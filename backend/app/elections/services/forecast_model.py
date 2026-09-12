@@ -31,12 +31,12 @@ import numpy as np
 from sqlalchemy.orm import Session
 
 from app.models import Candidate, GenericBallotAggregate
-from app.services import forecast_constants as C
-from app.services.votehub import compute_average
+from app.elections.services import forecast_constants as C
+from app.elections.services.votehub import compute_average
 
 logger = logging.getLogger(__name__)
 
-_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
 
 
 def _load_csv(name: str) -> list:

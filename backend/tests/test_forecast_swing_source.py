@@ -11,7 +11,7 @@ accidental live Wikipedia call raises instead of hitting the network.
 from datetime import datetime, timedelta, timezone
 
 from app.models import GenericBallotAggregate, PredictionMarket, VoteHubPoll
-from app.services import forecast_constants as C
+from app.elections.services import forecast_constants as C
 
 BASELINE = C.NATIONAL_PRES_MARGIN_2024_D  # -1.65
 
@@ -167,7 +167,7 @@ def test_partial_votehub_data_falls_through_to_aggregator(client, db):
 
 def test_generic_ballot_route_unchanged(client, db, respx_router):
     import httpx
-    from app.services.house_polls import WIKI_API
+    from app.elections.services.house_polls import WIKI_API
 
     respx_router.get(WIKI_API).mock(
         return_value=httpx.Response(200, json={"parse": {"wikitext": {"*": ""}}})

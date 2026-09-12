@@ -109,7 +109,7 @@ _POLLSTER_GRADES: dict[str, str] = {}
 _GRADES_LOADED = False
 
 GRADE_URL = "https://raw.githubusercontent.com/fivethirtyeight/data/master/pollster-ratings/pollster-ratings-combined.csv"
-GRADE_CSV_PATH = Path(__file__).resolve().parent.parent / "data" / "pollster_ratings.csv"
+GRADE_CSV_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "pollster_ratings.csv"
 
 NUMERIC_TO_LETTER = {
     3.0: "A+", 2.9: "A+", 2.8: "A", 2.7: "A", 2.6: "A-",

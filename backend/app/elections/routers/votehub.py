@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import VoteHubPoll
-from app.services.votehub import compute_average
+from app.elections.services.votehub import compute_average
 
 router = APIRouter(prefix="/api/votehub", tags=["votehub"])
 

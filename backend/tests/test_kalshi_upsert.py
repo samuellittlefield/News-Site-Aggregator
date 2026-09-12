@@ -17,7 +17,7 @@ import pathlib
 import httpx
 import pytest
 
-from app.services import kalshi
+from app.elections.services import kalshi
 from app.models import MarketSnapshot, PredictionMarket
 
 FIXTURE = json.loads(

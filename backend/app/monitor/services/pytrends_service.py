@@ -6,10 +6,10 @@ from functools import partial
 from sqlalchemy.orm import Session
 
 from app.models import Article, Trend
-from app.services.news import fetch_articles
-from app.services.summarizer import generate_summary
-from app.services.wikipedia import fetch_wiki
-from app.services.velocity import compute_velocity
+from app.monitor.services.news import fetch_articles
+from app.monitor.services.summarizer import generate_summary
+from app.monitor.services.wikipedia import fetch_wiki
+from app.monitor.services.velocity import compute_velocity
 
 logger = logging.getLogger(__name__)
 

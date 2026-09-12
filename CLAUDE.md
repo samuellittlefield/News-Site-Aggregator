@@ -23,3 +23,18 @@ Planning for new features happens in Cowork, not here — specs land in
 implementation plan, test cases) before implementation starts. Read all four
 before writing code. `docs/ROADMAP.md` is the single tracking surface for what's
 planned/in-progress/shipped.
+
+## Backend package layout
+
+`backend/app/` is split into three bounded packages, each with its own `routers/`
+and `services/`: `elections/` (polls, candidates, economist, votehub, forecasts,
+markets), `monitor/` (trends, news, weather, hazards, climate, astronomy), and
+`shared/` (service status + source health, `topic_matcher`, and other
+domain-free code). `app/models/` is a package along the same boundary
+(`elections.py`, `monitor.py`, `shared.py`), with a single `Base` in
+`app/models/base.py` re-exported from `app/models/__init__.py` — never call
+`declarative_base()` anywhere else. New code goes in whichever package matches
+its domain; `backend/tests/test_module_boundaries.py` fails CI if an elections
+module imports a monitor one or vice versa (shared may depend on neither). See
+`docs/features/elections-seam/` for why, and `SOURCES.md` for the current
+per-source package paths.

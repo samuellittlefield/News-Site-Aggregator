@@ -10,19 +10,19 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine
 from app.models import Base
-from app.routers import trends as trends_router
-from app.routers import climate as climate_router
-from app.routers import weather as weather_router
-from app.routers import news as news_router
-from app.routers import astronomy as astronomy_router
-from app.routers import status as status_router
-from app.routers import polls as polls_router
-from app.routers import candidates as candidates_router
-from app.routers import economist as economist_router
-from app.routers import votehub as votehub_router
-from app.routers import hazards as hazards_router
-from app.routers import markets as markets_router
-from app.routers import forecasts as forecasts_router
+from app.monitor.routers import trends as trends_router
+from app.monitor.routers import climate as climate_router
+from app.monitor.routers import weather as weather_router
+from app.monitor.routers import news as news_router
+from app.monitor.routers import astronomy as astronomy_router
+from app.shared.routers import status as status_router
+from app.elections.routers import polls as polls_router
+from app.elections.routers import candidates as candidates_router
+from app.elections.routers import economist as economist_router
+from app.elections.routers import votehub as votehub_router
+from app.monitor.routers import hazards as hazards_router
+from app.elections.routers import markets as markets_router
+from app.elections.routers import forecasts as forecasts_router
 from app.scheduler import refresh_all, refresh_breakout, refresh_candidates, refresh_climate, refresh_earthquakes, refresh_economist, refresh_extended_sources, refresh_faa, refresh_house_polls, refresh_kalshi, refresh_markets, refresh_news, refresh_nws_alerts, refresh_retirements, refresh_status, refresh_votehub, refresh_weather, start_scheduler
 from fastapi import BackgroundTasks
 

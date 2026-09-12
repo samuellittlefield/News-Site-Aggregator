@@ -6,7 +6,7 @@ without Candidate rows) from the DB; the per-seat priors are vendored CSVs. So a
 empty test DB is a valid, fixed input set — determinism is governed purely by the
 RNG seed. A smaller `n_sims` keeps the test fast without affecting determinism.
 """
-from app.services.forecast_model import run_model
+from app.elections.services.forecast_model import run_model
 
 N = 2000
 

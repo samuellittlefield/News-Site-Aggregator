@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import ClimateEvent, NWSAlert, RegionalWeather
-from app.routers.climate import CATEGORY_ICONS, CATEGORY_LABELS
+from app.monitor.routers.climate import CATEGORY_ICONS, CATEGORY_LABELS
 
 router = APIRouter(prefix="/api/weather", tags=["weather"])
 

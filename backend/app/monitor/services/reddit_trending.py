@@ -12,7 +12,7 @@ import httpx
 from sqlalchemy.orm import Session
 
 from app.models import Summary, Trend
-from app.services.topic_matcher import find_match
+from app.shared.services.topic_matcher import find_match
 
 logger = logging.getLogger(__name__)
 

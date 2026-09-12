@@ -14,7 +14,7 @@ import pathlib
 import httpx
 import pytest
 
-from app.services import votehub
+from app.elections.services import votehub
 from app.models import Candidate, HousePoll
 
 FIX = pathlib.Path(__file__).parent / "fixtures"
@@ -63,7 +63,7 @@ async def test_unmatched_name_is_skipped_and_logged(db, respx_router, caplog):
     _seed_candidate(db, "Matt Schultz", "DEM", "AK", 1)
     _mock(respx_router, US_REP)
 
-    with caplog.at_level(logging.WARNING, logger="app.services.votehub"):
+    with caplog.at_level(logging.WARNING, logger="app.elections.services.votehub"):
         saved = await votehub.fetch_votehub_house_polls(db)
 
     assert saved == 0
@@ -79,7 +79,7 @@ async def test_ambiguous_name_is_skipped_and_logged(db, respx_router, caplog):
     _seed_candidate(db, "Schultz, Matt", "DEM", "AK", 1)  # collides on normalized name
     _mock(respx_router, US_REP)
 
-    with caplog.at_level(logging.WARNING, logger="app.services.votehub"):
+    with caplog.at_level(logging.WARNING, logger="app.elections.services.votehub"):
         saved = await votehub.fetch_votehub_house_polls(db)
 
     assert saved == 0

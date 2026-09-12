@@ -10,12 +10,12 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Candidate, CompetitiveDistrict, HousePoll, HouseRetirement
-from app.services.house_polls import fetch_generic_ballot
-from app.services.votehub import compute_average as compute_votehub_average
+from app.elections.services.house_polls import fetch_generic_ballot
+from app.elections.services.votehub import compute_average as compute_votehub_average
 
 router = APIRouter(prefix="/api/polls", tags=["polls"])
 
-_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
 
 
 def _load_csv(name: str) -> list:

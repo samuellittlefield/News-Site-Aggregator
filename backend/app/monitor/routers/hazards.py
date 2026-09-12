@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Earthquake
-from app.services import faa_status as faa_service
+from app.monitor.services import faa_status as faa_service
 
 router = APIRouter(prefix="/api/hazards", tags=["hazards"])
 
