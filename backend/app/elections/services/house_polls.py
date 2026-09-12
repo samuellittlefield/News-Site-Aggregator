@@ -11,7 +11,6 @@ Also seeds the CompetitiveDistrict table with Cook Political Report 2026 ratings
 Pollster grades loaded from the vendored FiveThirtyEight pollster-ratings CSV
 (frozen at 2025-02-25 — 538's live feeds are dead), with the GitHub archive as fallback.
 """
-import collections
 import csv
 import hashlib
 import io
@@ -340,11 +339,20 @@ STATE_NAMES = {
 
 _PARTY_SUFFIX_RE = re.compile(r"\(([RDI])\)\s*$")
 
+# The six single-district states. Their 2026 House page uses the singular
+# "election" (not "elections") in its title — verified live 2026-09-12. This is
+# deliberately an explicit set rather than a retry-on-404 fallback, so a genuine
+# 404 on a multi-district state still surfaces as a warning (AC-8) instead of
+# being masked by a second attempt. MT is *not* in this set: Montana regained a
+# second seat in 2022 and MT-1 is a normal multi-district entry.
+AT_LARGE_STATES = frozenset({"AK", "DE", "ND", "SD", "VT", "WY"})
+
 
 def _state_wiki_page(state: str) -> str:
     """State abbreviation → the consolidated 2026 House elections page title."""
     state_name = STATE_NAMES.get(state, state)
-    return f"2026_United_States_House_of_Representatives_elections_in_{state_name}"
+    noun = "election" if state in AT_LARGE_STATES else "elections"
+    return f"2026_United_States_House_of_Representatives_{noun}_in_{state_name}"
 
 
 def _expand_templates(s: str) -> str:
@@ -418,60 +426,92 @@ async def _fetch_state_sections(client: httpx.AsyncClient, state: str) -> list[d
     return data.get("parse", {}).get("sections", [])
 
 
-def _find_polling_section(sections: list[dict], district: int) -> Optional[int]:
-    """Resolve `District {district} → General election → Polling` to a section
-    index by walking the section tree.
+_DISTRICT_RE = re.compile(r"^District\s+(\d+)\b", re.IGNORECASE)
+_GENERAL_ELECTION_RE = re.compile(r"^General election\b", re.IGNORECASE)
+_POLLING_RE = re.compile(r"^Polling\b", re.IGNORECASE)
 
-    Returns None (a normal skip, AC-7) if the district has no general-election
-    Polling subsection yet — including the AC-2b case where only a *primary*
-    section has a Polling child. Never returns a primary Polling section's index.
-    """
+
+def _general_election_polling_index(sections: list[dict], block_start: int, block_end: int) -> Optional[int]:
+    """Within `sections[block_start:block_end]`, find a `General election →
+    Polling` descendant and return its section index. This is the AC-2b guard:
+    `Polling` must be a descendant of `General election`, not of a sibling
+    primary section — so a primary's own Polling child (which can appear
+    earlier in the document) is never returned."""
     n = len(sections)
-    district_re = re.compile(rf"^District\s+{district}\b", re.IGNORECASE)
 
-    # 1. Locate the `District {district}` heading.
-    dist_i = dist_level = None
-    for i, sec in enumerate(sections):
-        if district_re.match(_clean_heading(sec.get("line", ""))):
-            dist_i = i
-            dist_level = sec.get("toclevel", 1)
-            break
-    if dist_i is None:
-        return None
-
-    # 2. District block = up to the next heading at the district's level or higher.
-    block_end = n
-    for i in range(dist_i + 1, n):
-        if sections[i].get("toclevel", 1) <= dist_level:
-            block_end = i
-            break
-
-    # 3. Within the block, find `General election`.
+    # Find `General election` within the block.
     ge_i = ge_level = None
-    for i in range(dist_i + 1, block_end):
-        if re.match(r"^General election\b", _clean_heading(sections[i].get("line", "")), re.IGNORECASE):
+    for i in range(block_start, block_end):
+        if _GENERAL_ELECTION_RE.match(_clean_heading(sections[i].get("line", ""))):
             ge_i = i
             ge_level = sections[i].get("toclevel", 2)
             break
     if ge_i is None:
         return None
 
-    # 4. General-election descendants = up to the next heading at its level or
-    #    higher (this is what excludes a primary section's own Polling child).
+    # General-election descendants = up to the next heading at its level or
+    # higher (this is what excludes a primary section's own Polling child).
     ge_end = block_end
     for i in range(ge_i + 1, block_end):
         if sections[i].get("toclevel", 1) <= ge_level:
             ge_end = i
             break
 
-    # 5. Find `Polling` strictly within General election's descendants.
+    # Find `Polling` strictly within General election's descendants.
     for i in range(ge_i + 1, ge_end):
-        if re.match(r"^Polling\b", _clean_heading(sections[i].get("line", "")), re.IGNORECASE):
+        if _POLLING_RE.match(_clean_heading(sections[i].get("line", ""))):
             try:
                 return int(sections[i].get("index"))
             except (TypeError, ValueError):
                 return None
     return None
+
+
+def _iter_polling_sections(sections: list[dict]):
+    """Yield `(district, section_index)` for every `District N` heading whose
+    block contains a `General election → Polling` descendant (AC-2, AC-2b/AC-3).
+
+    If the page has no `District N` heading at all (an at-large state), look
+    for a top-level `General election → Polling` and yield `(0, index)` instead
+    (AC-5) — matching the at-large convention already used by `_cand_district`
+    in `polls.py:30-32`.
+    """
+    n = len(sections)
+    dist_positions: list[tuple[int, int, int]] = []  # (start_i, level, district)
+    for i, sec in enumerate(sections):
+        m = _DISTRICT_RE.match(_clean_heading(sec.get("line", "")))
+        if m:
+            dist_positions.append((i, sec.get("toclevel", 1), int(m.group(1))))
+
+    if not dist_positions:
+        # At-large page: no District N wrapper, so General election sits at
+        # top level directly.
+        idx = _general_election_polling_index(sections, 0, n)
+        if idx is not None:
+            yield (0, idx)
+        return
+
+    for pos, (dist_i, dist_level, district) in enumerate(dist_positions):
+        block_end = n
+        for i in range(dist_i + 1, n):
+            if sections[i].get("toclevel", 1) <= dist_level:
+                block_end = i
+                break
+        idx = _general_election_polling_index(sections, dist_i + 1, block_end)
+        if idx is not None:
+            yield (district, idx)
+
+
+def _find_polling_section(sections: list[dict], district: int) -> Optional[int]:
+    """Resolve `District {district} → General election → Polling` to a section
+    index. Thin wrapper over `_iter_polling_sections` so this lookup and the
+    enumeration can never disagree.
+
+    Returns None (a normal skip, AC-7) if the district has no general-election
+    Polling subsection yet — including the AC-2b case where only a *primary*
+    section has a Polling child. Never returns a primary Polling section's index.
+    """
+    return dict(_iter_polling_sections(sections)).get(district)
 
 
 async def _fetch_section_wikitext(client: httpx.AsyncClient, page: str, section_idx: int) -> str:
@@ -647,26 +687,27 @@ def _housepoll_from_extract(p: dict) -> HousePoll:
 async def fetch_district_polls(db: Session) -> int:
     """Fetch district polls from each state's consolidated 2026 House page.
 
-    One sections call per state (not per district), then the `District N →
-    General election → Polling` subsection is resolved and fetched by index. Each
-    state is isolated: one state's failure never blocks the others (AC-5)."""
+    The scrape list is derived from Wikipedia's own section tree, not from
+    `CompetitiveDistrict` (AC-1): all 50 states are attempted, one sections call
+    per state, and every district whose section tree has a `General election →
+    Polling` descendant is scraped (AC-2). Each state is isolated: one state's
+    failure never blocks the others (AC-8). If zero districts resolve a polling
+    section across all 50 states, that's an upstream change, not a quiet
+    success — raise so the scheduler records a SourceRun failure instead of
+    success/item_count:0 (AC-9)."""
     await _load_pollster_grades()
-    by_state: dict[str, list[int]] = collections.defaultdict(list)
-    for dist in db.query(CompetitiveDistrict).all():
-        by_state[dist.state].append(dist.district)
 
     total = 0
+    resolved = 0
     async with httpx.AsyncClient(headers=HEADERS, timeout=12.0) as client:
-        for state, districts in by_state.items():
+        for state in STATE_NAMES:
             try:
                 sections = await _fetch_state_sections(client, state)
                 if not sections:
                     continue
                 page = _state_wiki_page(state)
-                for district in districts:
-                    section_idx = _find_polling_section(sections, district)
-                    if section_idx is None:
-                        continue  # AC-7: no general-election polling yet, clean skip
+                for district, section_idx in _iter_polling_sections(sections):
+                    resolved += 1
                     wikitext = await _fetch_section_wikitext(client, page, section_idx)
                     if not wikitext:
                         continue
@@ -679,6 +720,12 @@ async def fetch_district_polls(db: Session) -> int:
                 logger.warning("District poll fetch failed for state %s: %s", state, e)
 
     db.commit()
+    if resolved == 0:
+        raise RuntimeError(
+            "District polls: zero districts resolved a General election → Polling "
+            "section across all 50 states — likely a Wikipedia heading-vocabulary "
+            "change upstream"
+        )
     logger.info("District polls: %d new polls added", total)
     return total
 
