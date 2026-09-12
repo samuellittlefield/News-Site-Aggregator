@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models import MarketSnapshot, PredictionMarket
@@ -67,6 +68,12 @@ async def fetch_kalshi(db: Session) -> int:
     now = datetime.now(timezone.utc)
     seen_ids: set[str] = set()
     saved = 0
+    # Per-series fetch outcomes (kalshi-fetch-failure): "asked and got nothing"
+    # and "could not ask" must not look identical to the scheduler. A series
+    # lands here on a request error, a non-2xx status, or an unparseable/
+    # unexpected body — never on a fetch that succeeded but had no qualifying
+    # markets (e.g. everything under MIN_VOLUME_24H).
+    series_errors: dict[str, str] = {}
 
     for series_ticker, event_title in SERIES.items():
         params = {"series_ticker": series_ticker, "status": "open", "limit": 50}
@@ -77,11 +84,13 @@ async def fetch_kalshi(db: Session) -> int:
             payload = resp.json()
         except (httpx.RequestError, httpx.HTTPStatusError, ValueError) as e:
             logger.warning("Kalshi fetch failed (%s): %s", series_ticker, e)
+            series_errors[series_ticker] = str(e)
             continue
 
         markets = payload.get("markets") if isinstance(payload, dict) else None
         if not isinstance(markets, list):
             logger.warning("Kalshi unexpected payload shape for %s", series_ticker)
+            series_errors[series_ticker] = "unexpected payload shape"
             continue
 
         for m in markets:
@@ -130,12 +139,37 @@ async def fetch_kalshi(db: Session) -> int:
             db.add(MarketSnapshot(market_id=market_row.id, yes_price=yes_price, captured_at=now))
             saved += 1
 
-    # Retire any Kalshi market no longer returned (e.g. resolved/closed)
-    db.query(PredictionMarket).filter(
-        PredictionMarket.platform == "kalshi",
-        PredictionMarket.market_id.notin_(seen_ids),
-        PredictionMarket.active == True,  # noqa: E712
-    ).update({"active": False}, synchronize_session=False)
+    if series_errors and len(series_errors) == len(SERIES):
+        # Every series failed to fetch — a total upstream failure, not a quiet
+        # day. Raise so the scheduler wrapper's except records a real
+        # SourceRun failure instead of success/item_count: 0 (AC-1).
+        raise RuntimeError(
+            "Kalshi fetch failed for all series: "
+            + "; ".join(f"{ticker}: {err}" for ticker, err in series_errors.items())
+        )
+
+    # Retire any Kalshi market no longer returned (e.g. resolved/closed).
+    # Only meaningful relative to a fetch that actually returned something —
+    # notin_(seen_ids) against an empty set excludes nothing, which would flip
+    # every stored Kalshi market inactive on a fetch that found nothing (AC-3).
+    # Scoped to series that were actually fetched this run: on a partial
+    # failure (one series down), seen_ids only contains the healthy series'
+    # tickers, so an unscoped notin_(seen_ids) would also retire the down
+    # series' existing markets — they weren't seen, but not because they
+    # disappeared, because we couldn't ask. Market ids are always
+    # "<SERIES_TICKER>-...", so a same-run-fetched-series prefix scopes this
+    # correctly. A real disappearance within a successfully-fetched series
+    # still retires normally (AC-4).
+    fetched_series = [s for s in SERIES if s not in series_errors]
+    if seen_ids and fetched_series:
+        db.query(PredictionMarket).filter(
+            PredictionMarket.platform == "kalshi",
+            PredictionMarket.market_id.notin_(seen_ids),
+            PredictionMarket.active == True,  # noqa: E712
+            or_(*(
+                PredictionMarket.market_id.like(f"{s}-%") for s in fetched_series
+            )),
+        ).update({"active": False}, synchronize_session=False)
 
     db.query(MarketSnapshot).filter(
         MarketSnapshot.captured_at < now - timedelta(days=SNAPSHOT_RETENTION_DAYS)
