@@ -287,6 +287,13 @@ def compute_average(db: Session, poll_type: str, window_days: int = 21) -> Optio
     if not polls:
         return None
 
+    # Provenance (poll-staleness-labels): the newest/oldest fieldwork date actually
+    # inside the window this run averaged, not the newest/oldest in the whole table.
+    # Additive only — see that ticket for why this function otherwise never changes.
+    end_dates = [p.end_date for p in polls if p.end_date is not None]
+    newest_fieldwork_end = max(end_dates) if end_dates else None
+    oldest_fieldwork_end = min(end_dates) if end_dates else None
+
     def weighted(field: str) -> Optional[float]:
         num, den = 0.0, 0.0
         for p in polls:
@@ -308,6 +315,8 @@ def compute_average(db: Session, poll_type: str, window_days: int = 21) -> Optio
             "net": round(approve - disapprove, 1),
             "n_polls": len(polls),
             "window_days": window_days,
+            "newest_fieldwork_end": newest_fieldwork_end,
+            "oldest_fieldwork_end": oldest_fieldwork_end,
         }
 
     dem, rep = weighted("dem"), weighted("rep")
@@ -319,4 +328,6 @@ def compute_average(db: Session, poll_type: str, window_days: int = 21) -> Optio
         "margin": round(dem - rep, 1),
         "n_polls": len(polls),
         "window_days": window_days,
+        "newest_fieldwork_end": newest_fieldwork_end,
+        "oldest_fieldwork_end": oldest_fieldwork_end,
     }

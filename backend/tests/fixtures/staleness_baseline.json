@@ -1,0 +1,33 @@
+{
+  "_note": "Captured 2026-09-11 from unmodified pre-poll-staleness-labels compute_average, against the fixed relative-day seed in test_votehub_average_regression.py's SEED_APPROVAL/SEED_GENERIC_BALLOT. AC-2/AC-3 diff target: TC-2 and TC-3 assert the post-change code reproduces these exact values (the two new provenance keys are additive and excluded here by construction).",
+  "approval_average": {
+    "approve": 36.0,
+    "disapprove": 58.2,
+    "net": -22.2,
+    "n_polls": 5,
+    "window_days": 21
+  },
+  "generic_ballot_average": {
+    "dem": 47.0,
+    "rep": 44.3,
+    "margin": 2.7,
+    "n_polls": 3,
+    "window_days": 21
+  },
+  "forecast_model": {
+    "house": {
+      "swing_d": 4.3,
+      "swing_source": "votehub",
+      "dem_prob": 0.7291,
+      "rep_prob": 0.2709,
+      "median_dem_seats": 226
+    },
+    "senate": {
+      "swing_d": 4.3,
+      "swing_source": "votehub",
+      "dem_prob": 0.0991,
+      "rep_prob": 0.9009,
+      "median_dem_seats": 47
+    }
+  }
+}
