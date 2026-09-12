@@ -30,6 +30,23 @@ not a new upstream source, so it gets no row of its own.
 | House district polls | Two streams into `HousePoll` (distinguished by `source`): **(1)** Wikipedia — each state's consolidated 2026 House page, `District N → General election → Polling` subsection resolved via the section tree (`elections/services/house_polls.py`, 6h); **(2)** VoteHub `us-representative` polls, party resolved via the `Candidate` crosswalk (`elections/services/votehub.py`, hourly — see VoteHub row). Pollster grades from the vendored 538 CSV | `elections/services/house_polls.py`, `elections/services/votehub.py` | 6h / hourly | `/api/polls/house*` | Polls tab (district map, carousel) |
 | FEC candidates | `api.open.fec.gov/v1` | `elections/services/fec_candidates.py` | 24h | `/api/candidates/*` | Admin / candidates |
 
+**VoteHub average window drain is a forecast-input trigger, not just a display concern
+(poll-staleness-labels, 2026-09-12).** `compute_average` (`votehub.py`) is a rolling
+21-day window on fieldwork end date measured from *now*, not from the data. If an
+upstream feed goes quiet — as approval did, frozen at fieldwork 2026-08-28 since at
+least 09-11 while ingestion stayed healthy — the window drains on schedule regardless:
+fewer polls, then one poll, then `compute_average` returns `None`. The Polls page labels
+this (newest-fieldwork date, a stale marker, thin-average emphasis, an explicit empty
+state instead of the card silently vanishing), but the same drain also feeds
+`forecast_model.py`'s `_current_env()`, which calls `compute_average(db,
+"generic-ballot")` as its tier-1 swing input: a `None` return there **silently drops to
+tier 2** (the persisted Wikipedia-aggregator average, the PR #11 fallback) with no
+alert beyond the `swing_source` tag already surfaced on the model card. Generic ballot
+is healthy today (09-08 fieldwork, still current) only because that stream is still
+being delivered — the identical drain will happen to it the moment it stops, and
+nothing distinguishes "aggregator tier because VoteHub is genuinely down" from
+"aggregator tier because the window merely emptied."
+
 ## Forecasting
 
 | Source | Upstream | Service | Cadence | Route | UI |
