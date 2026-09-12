@@ -42,6 +42,27 @@ jobs:
         run: pip install -r requirements.txt -r requirements-dev.txt
       - name: Run tests
         run: pytest -v
+      - name: Alembic autogenerate drift check
+        # AC-5 (elections-seam T1) + the "autogenerate produces empty diff"
+        # chore from the roadmap's Later section, which this closes. Runs
+        # against the postgres service's own `newsdb` — untouched by the
+        # pytest job above, which uses newsdb_test — so migrations apply from
+        # truly empty. Fails if the model package and migration history have
+        # drifted apart; deletes the generated file either way so it never
+        # lands in versions/.
+        env:
+          DATABASE_URL: postgresql://newsuser:newspass@localhost:5432/newsdb
+        run: |
+          alembic upgrade head
+          alembic revision --autogenerate -m drift-check --rev-id drift_check
+          FILE=$(ls alembic/versions/drift_check_*.py)
+          if grep -qE "op\.(create_table|drop_table|add_column|drop_column|alter_column)\(" "$FILE"; then
+            echo "::error::Autogenerate detected schema drift — models and migrations are out of sync:"
+            cat "$FILE"
+            rm -f "$FILE"
+            exit 1
+          fi
+          rm -f "$FILE"
 
   frontend:
     name: Frontend (build)
