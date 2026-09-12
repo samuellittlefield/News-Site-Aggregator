@@ -1,0 +1,21 @@
+{
+  "parse": {
+    "title": "2026 United States House of Representatives election in Alaska",
+    "pageid": 99999903,
+    "sections": [
+      {"toclevel": 1, "level": "2", "line": "Background", "number": "1", "index": "1", "anchor": "Background"},
+
+      {"toclevel": 1, "level": "2", "line": "Primary election", "number": "2", "index": "10", "anchor": "Primary_election"},
+      {"toclevel": 2, "level": "3", "line": "Candidates", "number": "2.1", "index": "18", "anchor": "Candidates_primary"},
+      {"toclevel": 2, "level": "3", "line": "Polling", "number": "2.2", "index": "19", "anchor": "Polling_primary"},
+      {"toclevel": 2, "level": "3", "line": "Results", "number": "2.3", "index": "20", "anchor": "Results_primary"},
+
+      {"toclevel": 1, "level": "2", "line": "General election", "number": "3", "index": "25", "anchor": "General_election"},
+      {"toclevel": 2, "level": "3", "line": "Candidates", "number": "3.1", "index": "25", "anchor": "Candidates_general"},
+      {"toclevel": 2, "level": "3", "line": "Polling", "number": "3.2", "index": "26", "anchor": "Polling_general"},
+      {"toclevel": 2, "level": "3", "line": "Results", "number": "3.3", "index": "27", "anchor": "Results_general"},
+
+      {"toclevel": 1, "level": "2", "line": "See also", "number": "4", "index": "30", "anchor": "See_also"}
+    ]
+  }
+}
