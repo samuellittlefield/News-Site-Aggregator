@@ -186,3 +186,139 @@ T4 (second Postgres + data migration), T5b (second backend deploy), T6 (cross-cu
 pieces), T7 (repo split). These deliver operational independence, which no visitor can
 perceive. A database cutover in late October with live traffic is the one step in this plan
 that can take the site down.
+
+
+---
+
+## Bucket 6 — District poll coverage driven by Wikipedia (roadmap #17)
+
+_Written in Cowork 2026-09-12. Full pipeline docs exist: `docs/features/district-coverage-from-wikipedia/`
+(feature plan, acceptance criteria, implementation plan). Test cases are yours to write first._
+
+> Roadmap item #17, slug `district-coverage-from-wikipedia`.
+>
+> Read all three docs in `docs/features/district-coverage-from-wikipedia/` before writing code.
+> `03-implementation-plan.md` names every symbol to change and the order to change them in.
+>
+> **Your first task is to write `04-test-cases.md`** in that folder, from the approved
+> `02-acceptance-criteria.md` (AC-1 through AC-12), following the format of a shipped example
+> like `docs/features/ingestion-health/04-test-cases.md`. Map each case to its AC id. Then
+> implement. If any criterion can't be turned into a test case, stop and tell Samuel rather
+> than reinterpreting it.
+>
+> **The problem.** `/api/polls/house` has been flat at 112 rows across 37 of 435 districts.
+> This is not an ingestion failure — both jobs run and succeed, and `item_count: 0` correctly
+> means "no new `poll_id`" because both counters increment only on insert. The Wikipedia stream
+> is coverage-capped: `fetch_district_polls` builds its work list from
+> `db.query(CompetitiveDistrict).all()`, and that table only ever holds the 60 rows of the
+> hardcoded `COMPETITIVE_DISTRICTS` literal, unchanged since `a39fc85` on 2026-06-02.
+>
+> Measured live across all 50 state pages on 2026-09-12: **86 districts currently have a
+> `District N` → `General election` → `Polling` section. The scraper visits 31. 55 are never
+> fetched** — IA-1, IA-2, CO-3, NE-1, PA-10, TX-23, VA-1, NY-21, MI-4, CA-40 among them. And
+> **29 of the 60 seeded districts have no polling section at all**, so half the seed list is
+> dead fetches every six hours.
+>
+> **The fix** is to stop deciding in advance which districts might have polls. Enumerate them
+> from the section list you already fetch per state. Keep `_find_polling_section` working as a
+> thin wrapper over the new enumerator so `tests/test_house_polls.py` TC-1 and TC-7 pass
+> **unmodified** — that is the regression gate for the refactor, and the implementation plan
+> asks you to run it before touching `fetch_district_polls`.
+>
+> **Fold in the at-large states.** AK, DE, ND, SD, VT and WY 404 with `missingtitle` on every
+> run. Verified 2026-09-12: they use the **singular** title
+> (`2026_United_States_House_of_Representatives_election_in_Alaska` returns 200), four of the
+> six have a general-election `Polling` section today, and they have no `District N` wrapper —
+> `General election` sits at toclevel 1 with `Polling` as its child. Store them as district `0`,
+> matching `_cand_district` in `polls.py:30-32`. Alaska's page also has a *primary* `Polling`
+> section, so the AC-2b guard from PR #8 has to keep holding on at-large pages too.
+>
+> **Make zero coverage loud.** If zero districts resolve a polling section across all 50 states,
+> raise so the scheduler records a `SourceRun` **failure** rather than `success` / `item_count: 0`
+> — the pattern that hid the 46-day Economist silence (#10) and the Kalshi incident (#15). A
+> partial run still succeeds. Note and accept the consequence: `house_polls_job` covers the
+> generic ballot too and they share one `SourceRun` row, so this marks the whole job failed even
+> when the generic ballot worked. That is deliberate, and nothing is lost — the generic ballot
+> commits before district polls run. Splitting the job into two `SourceRun` ids is out of scope.
+>
+> No model change, no migration, no frontend change. Do not touch roadmap #12's data-quality
+> defects, and do not change `PollCarousel`'s empty-state copy — that is roadmap #21.
+>
+> Follow `CLAUDE.md`: PR, CI green, merge, then update `docs/ROADMAP.md` #17 to shipped with the
+> PR link. Also update `SOURCES.md`'s "House district polls" row, and fix its stale
+> "Python runtime is 3.9" line while you are in there.
+
+---
+
+## Bucket 7 — VoteHub district-poll candidate crosswalk (roadmap #18)
+
+_Written in Cowork 2026-09-12. Full pipeline docs exist: `docs/features/votehub-candidate-crosswalk-fix/`.
+Independent of Bucket 6 — different service file, different test file, no shared code. Either order._
+
+> Roadmap item #18, slug `votehub-candidate-crosswalk-fix`.
+>
+> Read all three docs in `docs/features/votehub-candidate-crosswalk-fix/` first.
+> `03-implementation-plan.md` states the matching rules precisely — follow them as written.
+>
+> **Your first task is to write `04-test-cases.md`** from the approved `02-acceptance-criteria.md`
+> (AC-1 through AC-13, including AC-2b and AC-4b). The implementation plan already contains a
+> table of the name shapes each case needs — use it. Then implement.
+>
+> **The problem.** Of the 92 `us-representative` polls VoteHub returns, 8 have a null
+> `seat_name` and **54 of the remaining 84 are dropped by the crosswalk — only 30 are stored,
+> across 17 districts.** Verified by re-implementing the crosswalk against live FEC data on
+> 2026-09-12; the simulation reproduced the stored count of 30 exactly.
+>
+> Root cause: `_normalize_name` sorts the name's tokens and then requires **exact set
+> equality**. Token-sorting was added so FEC's `Last, First` would match VoteHub's
+> `First Last`, and it does — but it makes any extra, missing or differently-spelled token a
+> hard miss. FEC stores legal names with middle names; VoteHub uses ballot names.
+>
+> **Do not derive a surname by taking the last token of the VoteHub name.** This is AC-2b and
+> it is the single biggest bucket: 11 drops have multi-token surnames where the last token is
+> only part of the surname — `Monica De La Cruz` (FEC `De La Cruz, Monica`), `Derrick Van Orden`,
+> `Marie Gluesenkamp Perez`, `Mariannette Miller-Meeks`, `Marni von Wilpert`. Match by testing
+> whether the FEC surname's tokens form a contiguous **suffix** of the VoteHub name's tokens.
+> A first draft of this design used the last token and left all 11 unresolved.
+>
+> **Two constraints from PR #8 that do not move.** AC-11: never read VoteHub's `partisan` field
+> — it is the sponsor's lean, not a candidate's party. AC-9: never guess on ambiguity. This
+> ticket trades zero-match failures for coverage and must never trade ambiguous-match failures
+> for coverage. Say so explicitly in the PR body, because `partisan` sits right there in the
+> payload and a reviewer will wonder.
+>
+> **Expected result, measured:** 30 stored → **67 (+37)**. The 8 residual skips are 4 same-party
+> or non-D-vs-R generals that `HousePoll` cannot represent (roadmap #20 — leave alone) and 4
+> with no stored candidate match, including `Lupe Castillo` (IL-04, filtered out of our
+> `Candidate` table — roadmap #19) and `Janelle Stetson` (PA-10, where VoteHub misspells FEC's
+> `Stelson`). If you land materially short of 67, something in the matcher is wrong — say so
+> rather than shipping it.
+>
+> **The 9 generic-label polls stay skipped.** Their answer choices are `"Rep"` / `"Dem"` rather
+> than names. Decided 2026-09-12: out of scope for v1, because they are generic-ballot-shaped
+> questions rather than named head-to-heads. Give them their own skip cause so they are visibly
+> distinct from name-matching failures.
+>
+> **Add the aggregate skip summary.** Every skip already logs its own WARNING with the unmatched
+> names — the evidence was in the logs all along, but nothing counts it, so a 64% drop rate read
+> as a healthy run. One `logger.info` summary line per run: returned, bad seat, too few answers,
+> inserted, updated, skipped by cause. Keep the per-poll WARNINGs.
+>
+> **AC-4b needs a committed fixture, not a live call.** The conftest autouse respx guard fails
+> any un-mocked HTTP. Capture FEC's filed-candidate list once from
+> `GET /v1/candidates/?election_year=2026&office=H` (key is in `backend/.env`), trim it, and
+> commit as `tests/fixtures/fec_house_filed_2026.json`. The test asserts no polled district has
+> a surname unique among **stored** candidates but ambiguous among **all filed** ones — measured
+> at zero occurrences on 2026-09-12. If it ever fails, that is the signal to promote roadmap
+> #19, not to loosen AC-4.
+>
+> No model change, no migration, no frontend change. Do not touch `fetch_votehub_polls`
+> (approval + generic ballot) or `compute_average` — #11's `test_staleness_regression.py` pin
+> must keep passing.
+>
+> **One thing to flag rather than auto-merge:** the surname-only fallback is the loosest rule
+> here and the largest recovery bucket. Per `CLAUDE.md`'s merge exception, if writing AC-4's
+> colliding-pair negative test took any interpretation, say so in the PR and wait.
+>
+> Otherwise follow `CLAUDE.md`: PR, CI green, merge, then update `docs/ROADMAP.md` #18 to shipped
+> with the PR link, and the VoteHub row in `SOURCES.md`.
