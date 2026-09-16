@@ -1,0 +1,953 @@
+diff --git a/frontend/src/components/ApprovalSection.tsx b/frontend/src/components/ApprovalSection.tsx
+index fd14b14..f01b18c 100644
+--- a/frontend/src/components/ApprovalSection.tsx
++++ b/frontend/src/components/ApprovalSection.tsx
+@@ -46,8 +46,8 @@ function NetSparkline({ values }: { values: number[] }) {
+   const zeroY = h - ((0 - min) / range) * h;
+   return (
+     <svg width={w} height={h} className="overflow-visible">
+-      <line x1="0" y1={zeroY} x2={w} y2={zeroY} stroke="#374151" strokeWidth="1" strokeDasharray="2 2" />
+-      <polyline points={pts} fill="none" stroke="#a78bfa" strokeWidth="1.5" />
++      <line x1="0" y1={zeroY} x2={w} y2={zeroY} stroke="#9ca3af" strokeWidth="1" strokeDasharray="2 2" />
++      <polyline points={pts} fill="none" stroke="#9333ea" strokeWidth="1.5" />
+     </svg>
+   );
+ }
+@@ -76,7 +76,7 @@ function GradientBar({ topline }: { topline: Record<string, number> }) {
+           </div>
+         ))}
+       </div>
+-      <span className="text-xs text-gray-600">Strong ↔ somewhat intensity</span>
++      <span className="text-xs text-ink-muted">Strong ↔ somewhat intensity</span>
+     </div>
+   );
+ }
+@@ -85,12 +85,14 @@ function CrosstabGrid({ block }: { block: EconBlock }) {
+   const rowLabels = Object.keys(block.rows);
+   return (
+     <div className="space-y-1">
+-      <p className="text-xs text-gray-500 font-medium">{prettyGroup(block.group_line)}</p>
++      <p className="text-xs text-ink-muted font-medium">{prettyGroup(block.group_line)}</p>
+       <div className="overflow-x-auto">
+         <table className="text-xs border-collapse">
+           <thead>
+-            <tr className="text-gray-500">
+-              <th className="text-left font-medium pr-3 py-1 sticky left-0 bg-gray-950" />
++            {/* sticky label column needs an opaque fill (≈ the glass panel's composite
++                color over the lavender base) so scrolled cells don't bleed through it */}
++            <tr className="text-ink-muted">
++              <th className="text-left font-medium pr-3 py-1 sticky left-0 bg-[#f5f2fb]" />
+               {block.columns.map((c, i) => (
+                 <th key={i} className="px-2 py-1 text-right font-medium whitespace-nowrap">{c}</th>
+               ))}
+@@ -98,22 +100,22 @@ function CrosstabGrid({ block }: { block: EconBlock }) {
+           </thead>
+           <tbody>
+             {rowLabels.map((label) => (
+-              <tr key={label} className="border-t border-gray-800/50">
+-                <td className="text-left text-gray-300 pr-3 py-1 whitespace-nowrap sticky left-0 bg-gray-950">
++              <tr key={label} className="border-t border-ink/10">
++                <td className="text-left text-ink pr-3 py-1 whitespace-nowrap sticky left-0 bg-[#f5f2fb]">
+                   {prettyLabel(label)}
+                 </td>
+                 {block.rows[label].map((v, i) => (
+-                  <td key={i} className="px-2 py-1 text-right text-gray-400 tabular-nums">{v}%</td>
++                  <td key={i} className="px-2 py-1 text-right text-ink tabular-nums">{v}%</td>
+                 ))}
+               </tr>
+             ))}
+             {Object.keys(block.ns).length > 0 && (
+-              <tr className="border-t border-gray-800">
+-                <td className="text-left text-gray-600 pr-3 py-1 whitespace-nowrap sticky left-0 bg-gray-950">
++              <tr className="border-t border-ink/15">
++                <td className="text-left text-ink-muted pr-3 py-1 whitespace-nowrap sticky left-0 bg-[#f5f2fb]">
+                   Unweighted N
+                 </td>
+                 {block.columns.map((c, i) => (
+-                  <td key={i} className="px-2 py-1 text-right text-gray-600 tabular-nums">
++                  <td key={i} className="px-2 py-1 text-right text-ink-muted tabular-nums">
+                     {block.ns[c]?.toLocaleString() ?? ""}
+                   </td>
+                 ))}
+@@ -147,10 +149,10 @@ export function ApprovalSection() {
+   return (
+     <section className="space-y-4">
+       <div className="flex items-center gap-2 flex-wrap">
+-        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
++        <h2 className="text-sm font-semibold text-ink uppercase tracking-wider">
+           Approval & Sentiment
+         </h2>
+-        <span className="text-xs text-gray-600 normal-case font-normal">
++        <span className="text-xs text-ink-muted normal-case font-normal">
+           Economist/YouGov · {fmtDate(latest.end_date)}
+           {latest.sample_size ? ` · n=${latest.sample_size.toLocaleString()}` : ""}
+         </span>
+@@ -164,8 +166,8 @@ export function ApprovalSection() {
+             onClick={() => { setActiveKey(q.key); setExpanded(false); }}
+             className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+               activeKey === q.key
+-                ? "bg-gray-800 text-white"
+-                : "text-gray-500 hover:text-gray-300 bg-gray-900/50"
++                ? "bg-ink text-white"
++                : "text-ink-muted hover:text-ink bg-glass-panel-nested"
+             }`}
+           >
+             {q.label}
+@@ -173,20 +175,20 @@ export function ApprovalSection() {
+         ))}
+       </div>
+ 
+-      <div className="border border-gray-800 rounded-xl p-4 flex flex-col sm:flex-row gap-6 sm:items-center">
++      <div className="bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-4 flex flex-col sm:flex-row gap-6 sm:items-center">
+         {/* Headline */}
+         <div className="flex items-center gap-4">
+           {net != null && (
+             <div>
+-              <div className={`text-3xl font-bold ${net >= 0 ? "text-green-400" : "text-red-400"}`}>
++              <div className={`text-3xl font-bold ${net >= 0 ? "text-poll-positive" : "text-poll-red"}`}>
+                 {net > 0 ? "+" : ""}{net}
+               </div>
+-              <div className="text-xs text-gray-500 uppercase tracking-wide">Net</div>
++              <div className="text-xs text-ink-muted uppercase tracking-wide">Net</div>
+             </div>
+           )}
+-          <div className="text-sm text-gray-400 leading-relaxed">
+-            {pos && <div><span className="text-green-400 font-semibold">{posVal}%</span> {prettyLabel(pos).toLowerCase()}</div>}
+-            {neg && <div><span className="text-red-400 font-semibold">{negVal}%</span> {prettyLabel(neg).toLowerCase()}</div>}
++          <div className="text-sm text-ink-muted leading-relaxed">
++            {pos && <div><span className="text-poll-positive font-semibold">{posVal}%</span> {prettyLabel(pos).toLowerCase()}</div>}
++            {neg && <div><span className="text-poll-red font-semibold">{negVal}%</span> {prettyLabel(neg).toLowerCase()}</div>}
+           </div>
+         </div>
+ 
+@@ -194,7 +196,7 @@ export function ApprovalSection() {
+         {netSeries.length >= 2 && (
+           <div className="flex flex-col gap-1">
+             <NetSparkline values={netSeries} />
+-            <span className="text-xs text-gray-600">Net over last {netSeries.length} polls</span>
++            <span className="text-xs text-ink-muted">Net over last {netSeries.length} polls</span>
+           </div>
+         )}
+ 
+@@ -204,14 +206,14 @@ export function ApprovalSection() {
+         {/* Breakdown by party */}
+         {party && (
+           <div className="flex gap-4 sm:ml-auto">
+-            {([["Dem", party.dem, "bg-blue-500"], ["Ind", party.ind, "bg-purple-400"], ["Rep", party.rep, "bg-red-500"]] as const).map(
++            {([["Dem", party.dem, "bg-poll-blue-bar"], ["Ind", party.ind, "bg-poll-purple-bar"], ["Rep", party.rep, "bg-poll-red-bar"]] as const).map(
+               ([label, val, color]) => (
+                 <div key={label} className="flex flex-col items-center gap-1 w-12">
+-                  <div className="h-16 w-5 bg-gray-800 rounded relative overflow-hidden flex items-end">
++                  <div className="h-16 w-5 bg-black/10 rounded relative overflow-hidden flex items-end">
+                     <div className={`${color} w-full`} style={{ height: `${val}%` }} />
+                   </div>
+-                  <span className="text-sm font-semibold text-white">{val}%</span>
+-                  <span className="text-xs text-gray-500">{label}</span>
++                  <span className="text-sm font-semibold text-ink">{val}%</span>
++                  <span className="text-xs text-ink-muted">{label}</span>
+                 </div>
+               )
+             )}
+@@ -224,15 +226,15 @@ export function ApprovalSection() {
+         <div className="space-y-3">
+           <button
+             onClick={() => setExpanded((e) => !e)}
+-            className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
++            className="text-xs text-ink-muted hover:text-ink transition-colors"
+           >
+             {expanded ? "▾ Hide full crosstab" : "▸ Show full demographic crosstab"}
+           </button>
+           {expanded && (
+-            <div className="border border-gray-800 rounded-xl p-4 space-y-5">
++            <div className="bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-4 space-y-5">
+               {/* Show the survey wording only once it's the readable (spaced) form. */}
+               {crosstab.question_text && crosstab.question_text.includes(" ") && (
+-                <p className="text-xs text-gray-400 italic">“{crosstab.question_text}”</p>
++                <p className="text-xs text-ink-muted italic">“{crosstab.question_text}”</p>
+               )}
+               {crosstab.blocks.map((b, i) => <CrosstabGrid key={i} block={b} />)}
+               {crosstab.source_url && (
+@@ -240,7 +242,7 @@ export function ApprovalSection() {
+                   href={crosstab.source_url}
+                   target="_blank"
+                   rel="noopener noreferrer"
+-                  className="inline-block text-xs text-purple-400 hover:text-purple-300"
++                  className="inline-block text-xs text-poll-purple hover:text-poll-purple-bar"
+                 >
+                   Source: Economist/YouGov tab report (PDF) ↗
+                 </a>
+diff --git a/frontend/src/components/DistrictMap.tsx b/frontend/src/components/DistrictMap.tsx
+index b548c78..0870fdb 100644
+--- a/frontend/src/components/DistrictMap.tsx
++++ b/frontend/src/components/DistrictMap.tsx
+@@ -65,7 +65,7 @@ function wikiUrl(name: string): string {
+ function ResourceLink({ href, label }: { href: string; label: string }) {
+   return (
+     <a href={href} target="_blank" rel="noopener noreferrer"
+-       className="text-gray-500 hover:text-gray-200 transition-colors">
++       className="text-ink-muted hover:text-ink transition-colors">
+       {label} ↗
+     </a>
+   );
+@@ -85,16 +85,16 @@ function CandidateRow({ c, max, state, openSeat }: { c: DistrictCandidate; max:
+     <div className="mb-2.5">
+       <div className="flex items-center gap-1.5 text-[13px] mb-0.5">
+         <span className="w-2 h-2 rounded-full flex-none" style={{ background: col }} />
+-        <span className="text-gray-200">{c.name}</span>
++        <span className="text-ink">{c.name}</span>
+         {showInc && (
+-          <span className="text-[9px] uppercase tracking-wide text-gray-500 border border-gray-700 rounded px-1">inc</span>
++          <span className="text-[9px] uppercase tracking-wide text-ink-muted border border-ink/20 rounded px-1">inc</span>
+         )}
+       </div>
+       <div className="flex items-center gap-2 pl-3.5">
+-        <div className="flex-1 h-1.5 rounded-full bg-gray-800 overflow-hidden">
++        <div className="flex-1 h-1.5 rounded-full bg-black/10 overflow-hidden">
+           <div className="h-full rounded-full" style={{ width: `${w}%`, background: col }} />
+         </div>
+-        <span className="text-[11px] text-gray-500 tabular-nums w-12 text-right">{money(c.fundraising_total)}</span>
++        <span className="text-[11px] text-ink-muted tabular-nums w-12 text-right">{money(c.fundraising_total)}</span>
+       </div>
+       <div className="flex items-center gap-2.5 pl-3.5 mt-1 text-[10px]">
+         {fec && <ResourceLink href={fec} label="FEC" />}
+@@ -124,21 +124,21 @@ function DistrictDetail({ d }: { d: DistrictData }) {
+   const ratingColor = leanColor(d.pres_margin_2024);
+ 
+   return (
+-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
++    <div className="bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-4">
+       <div className="flex items-baseline justify-between gap-2">
+-        <span className="text-lg font-semibold text-white">{d.label}</span>
++        <span className="text-lg font-semibold text-ink">{d.label}</span>
+         <span className="text-xs font-medium" style={{ color: ratingColor }}>{leanLabel(d.pres_margin_2024)}</span>
+       </div>
+-      <div className="text-[11px] text-gray-500 mb-3 flex items-center flex-wrap gap-x-1.5">
++      <div className="text-[11px] text-ink-muted mb-3 flex items-center flex-wrap gap-x-1.5">
+         <span>{ratingLabel}</span>
+-        {d.cook_rating && <span className="text-gray-700">· Cook</span>}
+-        {d.open_seat && <span className="text-amber-500/80">· Open seat</span>}
+-        <span className="text-gray-700">· 2026</span>
++        {d.cook_rating && <span className="text-ink-muted">· Cook</span>}
++        {d.open_seat && <span className="text-poll-amber">· Open seat</span>}
++        <span className="text-ink-muted">· 2026</span>
+       </div>
+ 
+       {d.open_seat && d.departing_incumbent && (
+-        <p className="text-[11px] text-gray-500 mb-3 -mt-1 leading-snug">
+-          <span className="text-amber-500/70">Open:</span>{" "}
++        <p className="text-[11px] text-ink-muted mb-3 -mt-1 leading-snug">
++          <span className="text-poll-amber">Open:</span>{" "}
+           {d.departing_incumbent.name}
+           {d.departing_incumbent.party ? ` (${d.departing_incumbent.party})` : ""}{" "}
+           {d.departing_incumbent.reason || "is not seeking re-election"}.
+@@ -148,12 +148,12 @@ function DistrictDetail({ d }: { d: DistrictData }) {
+       {headline.length > 0 ? (
+         <>{headline.map(c => <CandidateRow key={c.name} c={c} max={maxRaise} state={d.state} openSeat={d.open_seat} />)}</>
+       ) : (
+-        <p className="text-[12px] text-gray-600">No major-party candidates on file yet.</p>
++        <p className="text-[12px] text-ink-muted">No major-party candidates on file yet.</p>
+       )}
+ 
+       {others.length > 0 && (
+         <div className="mt-1">
+-          <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
++          <p className="text-[10px] uppercase tracking-wider text-ink-muted mb-1">
+             Also running ({others.length})
+           </p>
+           <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+@@ -161,32 +161,32 @@ function DistrictDetail({ d }: { d: DistrictData }) {
+               const href = fecUrl(c.fec_id) ?? newsUrl(c.name, d.state);
+               return (
+                 <a key={c.name} href={href} target="_blank" rel="noopener noreferrer"
+-                   className="text-[11px] text-gray-500 hover:text-gray-300 transition-colors">
++                   className="text-[11px] text-ink-muted hover:text-ink transition-colors">
+                   <span className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle" style={{ background: partyColor(c.party) }} />
+                   {c.name.split(",")[0]}
+                 </a>
+               );
+             })}
+-            {others.length > 8 && <span className="text-[11px] text-gray-600">+{others.length - 8} more</span>}
++            {others.length > 8 && <span className="text-[11px] text-ink-muted">+{others.length - 8} more</span>}
+           </div>
+         </div>
+       )}
+ 
+-      <div className="border-t border-gray-800 my-3" />
++      <div className="border-t border-ink/10 my-3" />
+ 
+       {d.latest_poll && d.latest_poll.margin !== null ? (
+-        <p className="text-[11px] text-gray-400">
++        <p className="text-[11px] text-ink-muted">
+           Latest poll:{" "}
+-          <span style={{ color: d.latest_poll.margin > 0 ? "#60a5fa" : "#f87171" }}>
++          <span style={{ color: d.latest_poll.margin > 0 ? "#2d5390" : "#a83c37" }}>
+             {d.latest_poll.margin > 0 ? "D" : "R"}+{Math.abs(d.latest_poll.margin).toFixed(1)}
+           </span>
+           {d.latest_poll.pollster ? ` · ${d.latest_poll.pollster}` : ""}
+         </p>
+       ) : (
+-        <p className="text-[11px] text-gray-600">No district polls yet — primaries ongoing.</p>
++        <p className="text-[11px] text-ink-muted">No district polls yet — primaries ongoing.</p>
+       )}
+       {d.house_margin_2024 != null && (
+-        <p className="text-[11px] text-gray-600 mt-0.5">
++        <p className="text-[11px] text-ink-muted mt-0.5">
+           2024 House result: {leanLabel(d.house_margin_2024)}
+         </p>
+       )}
+@@ -225,7 +225,7 @@ export function DistrictMap({ districts }: Props) {
+ 
+   if (districts.length === 0) {
+     return (
+-      <div className="w-full rounded-xl border border-gray-800 bg-gray-900 flex items-center justify-center text-gray-600 text-sm" style={{ height: 400 }}>
++      <div className="w-full rounded-2xl border border-glass-border bg-glass-panel backdrop-blur-lg shadow-[0_4px_16px_rgba(74,61,112,0.08)] flex items-center justify-center text-ink-muted text-sm" style={{ height: 400 }}>
+         No district data
+       </div>
+     );
+@@ -257,7 +257,7 @@ export function DistrictMap({ districts }: Props) {
+         </svg>
+ 
+         {/* Legend */}
+-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[10px] text-gray-500">
++        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[10px] text-ink-muted">
+           {[
+             ["Safe D", "#1e3a8a"], ["Lean D", "#60a5fa"], ["Toss-up", "#6b7280"],
+             ["Lean R", "#f87171"], ["Safe R", "#991b1b"],
+@@ -266,7 +266,7 @@ export function DistrictMap({ districts }: Props) {
+               <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: col }} />{label}
+             </span>
+           ))}
+-          <span className="text-gray-700">· colored by 2024 presidential lean · click a district</span>
++          <span className="text-ink-muted">· colored by 2024 presidential lean · click a district</span>
+         </div>
+       </div>
+ 
+diff --git a/frontend/src/components/ForecastSection.tsx b/frontend/src/components/ForecastSection.tsx
+index 74eaeb4..ec64abd 100644
+--- a/frontend/src/components/ForecastSection.tsx
++++ b/frontend/src/components/ForecastSection.tsx
+@@ -38,36 +38,36 @@ function ChamberCard({ chamber, model, tuned }: { chamber: ChamberForecast; mode
+     : null;
+ 
+   return (
+-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
++    <div className="bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-4">
+       <div className="flex items-center justify-between mb-3">
+-        <p className="text-xs text-gray-400 uppercase tracking-wider">{chamber.title}</p>
++        <p className="text-xs text-ink-muted uppercase tracking-wider">{chamber.title}</p>
+         <FavoredTrend marketId={favoredMarketId} />
+       </div>
+ 
+       <div className="flex items-baseline gap-3">
+-        <span className={`text-4xl font-bold ${demLeads ? "text-blue-400" : "text-red-400"}`}>
++        <span className={`text-4xl font-bold ${demLeads ? "text-poll-blue" : "text-poll-red"}`}>
+           {demLeads ? pct(dem) : pct(rep)}
+         </span>
+-        <span className="text-sm text-gray-400">
++        <span className="text-sm text-ink-muted">
+           {demLeads ? "Democratic" : "Republican"} control
+         </span>
+       </div>
+ 
+       {/* Split probability bar */}
+-      <div className="flex h-2 rounded-full overflow-hidden mt-3 bg-gray-800">
+-        <div className="bg-blue-500" style={{ width: `${(dem ?? 0) * 100}%` }} />
+-        <div className="bg-red-500" style={{ width: `${(rep ?? 0) * 100}%` }} />
++      <div className="flex h-2 rounded-full overflow-hidden mt-3 bg-black/10">
++        <div className="bg-poll-blue-bar" style={{ width: `${(dem ?? 0) * 100}%` }} />
++        <div className="bg-poll-red-bar" style={{ width: `${(rep ?? 0) * 100}%` }} />
+       </div>
+-      <div className="flex justify-between text-[10px] text-gray-500 mt-1">
++      <div className="flex justify-between text-[10px] text-ink-muted mt-1">
+         <span>D {pct(dem)}</span>
+         <span>R {pct(rep)}</span>
+       </div>
+ 
+       {/* Per-source breakdown (markets) */}
+-      <div className="mt-3 space-y-1 border-t border-gray-800 pt-2">
+-        <p className="text-[9px] text-gray-600 uppercase tracking-wider">Markets</p>
++      <div className="mt-3 space-y-1 border-t border-ink/10 pt-2">
++        <p className="text-[9px] text-ink-muted uppercase tracking-wider">Markets</p>
+         {chamber.sources.length === 0 ? (
+-          <p className="text-[10px] text-gray-600">No market data available.</p>
++          <p className="text-[10px] text-ink-muted">No market data available.</p>
+         ) : (
+           chamber.sources.map(s => (
+             <a
+@@ -75,7 +75,7 @@ function ChamberCard({ chamber, model, tuned }: { chamber: ChamberForecast; mode
+               href={s.url ?? undefined}
+               target="_blank"
+               rel="noopener noreferrer"
+-              className="flex items-center justify-between text-[11px] text-gray-500 hover:text-gray-300"
++              className="flex items-center justify-between text-[11px] text-ink-muted hover:text-ink"
+             >
+               <span>{PLATFORM_LABEL[s.platform] ?? s.platform}</span>
+               <span className="font-mono">D {pct(s.dem_prob)} · R {pct(s.rep_prob)} ↗</span>
+@@ -86,19 +86,19 @@ function ChamberCard({ chamber, model, tuned }: { chamber: ChamberForecast; mode
+ 
+       {/* Our experimental in-house model — separate from the market consensus */}
+       {model && (
+-        <div className="mt-2 border-t border-dashed border-amber-800/40 pt-2">
++        <div className="mt-2 border-t border-dashed border-poll-amber-border pt-2">
+           <div className="flex items-center justify-between">
+-            <span className="text-[11px] text-amber-300/90 flex items-center gap-1.5">
++            <span className="text-[11px] text-poll-amber flex items-center gap-1.5">
+               In-house model
+-              <span className="text-[8px] uppercase tracking-wide bg-amber-900/40 text-amber-400/90 px-1 py-0.5 rounded">
++              <span className="text-[8px] uppercase tracking-wide bg-poll-amber-bg text-poll-amber px-1 py-0.5 rounded">
+                 {tuned ? "tuned" : "experimental"}
+               </span>
+             </span>
+-            <span className="font-mono text-[11px] text-gray-400">
++            <span className="font-mono text-[11px] text-ink-muted">
+               D {pct(model.dem_prob)} · R {pct(model.rep_prob)}
+             </span>
+           </div>
+-          <p className="text-[9px] text-gray-600 mt-0.5">
++          <p className="text-[9px] text-ink-muted mt-0.5">
+             median {model.median_dem_seats} D seats (90% range {model.p10_dem_seats}–{model.p90_dem_seats})
+             {" · "}{model.n_sims.toLocaleString()} sims · {tuned ? "tuned knobs" : "backtested δ"}
+           </p>
+@@ -121,32 +121,32 @@ function ModelBasis({ chambers }: { chambers: ChamberForecast[] }) {
+     c?.model && c.dem_prob != null ? Math.round((c.model.dem_prob - c.dem_prob) * 100) : null;
+ 
+   return (
+-    <div className="border-t border-gray-800 pt-3">
+-      <button onClick={() => setOpen(o => !o)} className="text-[11px] text-amber-300/80 hover:text-amber-200">
++    <div className="border-t border-ink/10 pt-3">
++      <button onClick={() => setOpen(o => !o)} className="text-[11px] text-poll-amber hover:text-ink">
+         {open ? "▾ Hide" : "▸ How the experimental model works"}
+       </button>
+       {open && (
+-        <div className="mt-2 text-[11px] text-gray-400 leading-relaxed space-y-2 border border-gray-800 rounded-lg p-3">
++        <div className="mt-2 text-[11px] text-ink-muted leading-relaxed space-y-2 bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-3">
+           <p>
+-            <span className="text-gray-300">Inputs.</span> National environment = the live generic-ballot
++            <span className="text-ink">Inputs.</span> National environment = the live generic-ballot
+             average, currently a <span className="font-mono">{m.swing_d >= 0 ? "+" : ""}{m.swing_d}</span>-pt
+             swing vs the 2024 presidential baseline, applied to every seat.
+           </p>
+           <p>
+-            <span className="text-gray-300">Priors.</span> Each seat blends its last same-office result
++            <span className="text-ink">Priors.</span> Each seat blends its last same-office result
+             (House: 2024 · Senate: 2020, or 2022 for FL/OH) with the 2024 presidential lean — so the prior
+             carries incumbency, not just partisanship. Seats are then nudged by the
+-            <span className="text-gray-300"> FEC fundraising gap</span> between the parties' best-funded candidates.
++            <span className="text-ink"> FEC fundraising gap</span> between the parties' best-funded candidates.
+           </p>
+           <p>
+-            <span className="text-gray-300">Uncertainty.</span> {m.n_sims.toLocaleString()} Monte-Carlo sims
++            <span className="text-ink">Uncertainty.</span> {m.n_sims.toLocaleString()} Monte-Carlo sims
+             with a shared national error τ=<span className="font-mono">{m.tau}</span> plus per-seat noise
+             δ (House <span className="font-mono">{delta(house)}</span>, Senate <span className="font-mono">{delta(senate)}</span>).
+-            All three are <span className="text-gray-300">backtested on actual results</span> — House δ on
++            All three are <span className="text-ink">backtested on actual results</span> — House δ on
+             2024 districts, Senate δ on 133 races (2018–24), τ from historical generic-ballot error.
+           </p>
+           <p>
+-            <span className="text-gray-300">Model vs market.</span> House {vsMarket(house)! >= 0 ? "+" : ""}{vsMarket(house)} pts,
++            <span className="text-ink">Model vs market.</span> House {vsMarket(house)! >= 0 ? "+" : ""}{vsMarket(house)} pts,
+             Senate {vsMarket(senate)! >= 0 ? "+" : ""}{vsMarket(senate)} pts (model D-prob minus market consensus).
+             A gap is an honest disagreement, not an error — the model trusts current fundamentals; the market prices in more.
+           </p>
+@@ -163,7 +163,7 @@ export function ForecastSection() {
+   const { sim, loading: simLoading } = useModelSim(tuning ? knobs : null);
+ 
+   if (loading) {
+-    return <div className="h-40 bg-gray-900 rounded-xl animate-pulse" />;
++    return <div className="h-40 bg-glass-panel-nested rounded-2xl animate-pulse" />;
+   }
+   if (!forecast || forecast.chambers.every(c => c.sources.length === 0)) {
+     return null;
+@@ -178,15 +178,15 @@ export function ForecastSection() {
+     <div className="space-y-3">
+       <div className="flex items-start justify-between gap-3">
+         <div>
+-          <p className="text-xs text-gray-600 uppercase tracking-wider">2026 Control of Congress — Forecast</p>
+-          <p className="text-[10px] text-gray-700">
++          <p className="text-xs text-ink-muted uppercase tracking-wider">2026 Control of Congress — Forecast</p>
++          <p className="text-[10px] text-ink-muted">
+             Market-implied probabilities · prediction markets refreshed every 10 minutes
+           </p>
+         </div>
+         <button
+           onClick={() => setTuning(t => !t)}
+           className={`text-[10px] px-2 py-1 rounded border whitespace-nowrap ${
+-            tuning ? "border-amber-700/60 text-amber-300/90 bg-amber-950/20" : "border-gray-800 text-gray-500 hover:text-gray-300"
++            tuning ? "border-poll-amber-border text-poll-amber bg-poll-amber-bg" : "border-ink/15 text-ink-muted hover:text-ink"
+           }`}
+         >
+           ⚙ {tuning ? "Tuning model" : "Tune model"}
+@@ -211,7 +211,7 @@ export function ForecastSection() {
+ 
+       {/* Model link-outs (cited, not ingested) */}
+       {forecast.references.length > 0 && (
+-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-gray-600">
++        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-ink-muted">
+           <span className="uppercase tracking-wider">Model forecasts:</span>
+           {forecast.references.map(r => (
+             <a
+@@ -220,7 +220,7 @@ export function ForecastSection() {
+               target="_blank"
+               rel="noopener noreferrer"
+               title={r.note}
+-              className="text-blue-500/80 hover:text-blue-400"
++              className="text-poll-blue hover:text-poll-blue-bar"
+             >
+               {r.name} ↗
+             </a>
+diff --git a/frontend/src/components/GenericBallotBar.tsx b/frontend/src/components/GenericBallotBar.tsx
+index 4def3b6..fb938cd 100644
+--- a/frontend/src/components/GenericBallotBar.tsx
++++ b/frontend/src/components/GenericBallotBar.tsx
+@@ -19,27 +19,27 @@ export function GenericBallotBar({ ballot }: Props) {
+ 
+   return (
+     <div className="space-y-2">
+-      <div className="flex items-center justify-between text-xs text-gray-500">
+-        <span className="font-semibold text-gray-300 uppercase tracking-wider">Generic Ballot</span>
++      <div className="flex items-center justify-between text-xs text-ink-muted">
++        <span className="font-semibold text-ink uppercase tracking-wider">Generic Ballot</span>
+         <span>
+           {leader === "D"
+-            ? <span className="text-blue-400">Democrats +{marginAbs}</span>
+-            : <span className="text-red-400">Republicans +{marginAbs}</span>}
+-          <span className="text-gray-600 ml-2">· avg of {ballot.length} aggregators</span>
++            ? <span className="text-poll-blue">Democrats +{marginAbs}</span>
++            : <span className="text-poll-red">Republicans +{marginAbs}</span>}
++          <span className="text-ink-muted ml-2">· avg of {ballot.length} aggregators</span>
+         </span>
+       </div>
+ 
+       {/* Split bar */}
+       <div className="relative h-6 rounded-lg overflow-hidden flex">
+         <div
+-          className="flex items-center justify-start pl-2 text-xs font-bold text-white"
+-          style={{ width: `${repPct}%`, background: "linear-gradient(90deg, #d01428, #e04060)" }}
++          className="flex items-center justify-start pl-2 text-xs font-bold text-white bg-poll-red-bar"
++          style={{ width: `${repPct}%` }}
+         >
+           R {avgRep.toFixed(1)}%
+         </div>
+         <div
+-          className="flex items-center justify-end pr-2 text-xs font-bold text-white"
+-          style={{ width: `${demPct}%`, background: "linear-gradient(90deg, #4080d0, #1e64dc)" }}
++          className="flex items-center justify-end pr-2 text-xs font-bold text-white bg-poll-blue-bar"
++          style={{ width: `${demPct}%` }}
+         >
+           D {avgDem.toFixed(1)}%
+         </div>
+@@ -48,11 +48,11 @@ export function GenericBallotBar({ ballot }: Props) {
+       {/* Individual aggregators */}
+       <div className="flex gap-3 overflow-x-auto scrollbar-none pb-1">
+         {ballot.map(b => (
+-          <div key={b.source} className="flex-shrink-0 text-[10px] text-gray-600 flex items-center gap-1">
+-            <span className="text-gray-500">{b.source.replace(/\[\[|\]\]/g, "").split("|")[0]}</span>
+-            <span className="text-red-400">R{b.rep.toFixed(1)}</span>
+-            <span className="text-gray-700">/</span>
+-            <span className="text-blue-400">D{b.dem.toFixed(1)}</span>
++          <div key={b.source} className="flex-shrink-0 text-[10px] text-ink-muted flex items-center gap-1">
++            <span className="text-ink">{b.source.replace(/\[\[|\]\]/g, "").split("|")[0]}</span>
++            <span className="text-poll-red">R{b.rep.toFixed(1)}</span>
++            <span className="text-ink-muted">/</span>
++            <span className="text-poll-blue">D{b.dem.toFixed(1)}</span>
+           </div>
+         ))}
+       </div>
+diff --git a/frontend/src/components/ModelControls.tsx b/frontend/src/components/ModelControls.tsx
+index ceb2261..9bb7433 100644
+--- a/frontend/src/components/ModelControls.tsx
++++ b/frontend/src/components/ModelControls.tsx
+@@ -10,22 +10,22 @@ interface Props {
+ 
+ export function ModelControls({ knobs, onChange, onReset, dirty, loading }: Props) {
+   return (
+-    <div className="border border-amber-800/40 rounded-lg p-3 bg-amber-950/10 space-y-2.5">
++    <div className="border border-poll-amber-border bg-poll-amber-bg/60 backdrop-blur-lg rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-3 space-y-2.5">
+       <div className="flex items-center justify-between">
+-        <span className="text-[11px] text-amber-300/90 uppercase tracking-wider">
+-          Model controls {loading && <span className="text-gray-600">· recomputing…</span>}
++        <span className="text-[11px] text-poll-amber uppercase tracking-wider">
++          Model controls {loading && <span className="text-ink-muted">· recomputing…</span>}
+         </span>
+         {dirty && (
+-          <button onClick={onReset} className="text-[10px] text-gray-500 hover:text-gray-300">
++          <button onClick={onReset} className="text-[10px] text-ink-muted hover:text-ink">
+             reset defaults
+           </button>
+         )}
+       </div>
+       {MODEL_KNOB_META.map(m => (
+         <label key={m.key} className="block" title={m.help}>
+-          <div className="flex items-center justify-between text-[10px] text-gray-500">
++          <div className="flex items-center justify-between text-[10px] text-ink-muted">
+             <span>{m.label}</span>
+-            <span className="font-mono text-gray-400">{knobs[m.key]}</span>
++            <span className="font-mono text-ink">{knobs[m.key]}</span>
+           </div>
+           <input
+             type="range"
+@@ -34,11 +34,11 @@ export function ModelControls({ knobs, onChange, onReset, dirty, loading }: Prop
+             step={m.step}
+             value={knobs[m.key]}
+             onChange={e => onChange({ ...knobs, [m.key]: Number(e.target.value) })}
+-            className="w-full h-1 accent-amber-500 cursor-pointer"
++            className="w-full h-1 accent-poll-amber cursor-pointer"
+           />
+         </label>
+       ))}
+-      <p className="text-[9px] text-gray-600">
++      <p className="text-[9px] text-ink-muted">
+         Live re-runs the simulation. Widen τ / δ to see the probabilities relax toward 50%.
+       </p>
+     </div>
+diff --git a/frontend/src/components/PollCarousel.tsx b/frontend/src/components/PollCarousel.tsx
+index ac191d3..e4c3650 100644
+--- a/frontend/src/components/PollCarousel.tsx
++++ b/frontend/src/components/PollCarousel.tsx
+@@ -1,16 +1,16 @@
+ import { GenericBallot, HousePoll } from "../api/client";
+ 
+ const GRADE_STYLES: Record<string, string> = {
+-  "A+": "bg-emerald-900 text-emerald-300 border-emerald-700",
+-  "A":  "bg-emerald-900 text-emerald-400 border-emerald-800",
+-  "A-": "bg-teal-900   text-teal-300    border-teal-700",
+-  "B+": "bg-blue-900   text-blue-300    border-blue-700",
+-  "B":  "bg-blue-900   text-blue-400    border-blue-800",
+-  "B-": "bg-yellow-900 text-yellow-300  border-yellow-700",
+-  "C+": "bg-orange-900 text-orange-300  border-orange-700",
+-  "C":  "bg-orange-900 text-orange-400  border-orange-800",
+-  "C-": "bg-red-900    text-red-400     border-red-800",
+-  "D":  "bg-red-950    text-red-500     border-red-900",
++  "A+": "bg-emerald-100 text-emerald-700 border-emerald-300",
++  "A":  "bg-emerald-100 text-emerald-600 border-emerald-300",
++  "A-": "bg-teal-100    text-teal-700    border-teal-300",
++  "B+": "bg-blue-100    text-blue-700    border-blue-300",
++  "B":  "bg-blue-100    text-blue-600    border-blue-300",
++  "B-": "bg-yellow-100  text-yellow-700  border-yellow-300",
++  "C+": "bg-orange-100  text-orange-700  border-orange-300",
++  "C":  "bg-orange-100  text-orange-600  border-orange-300",
++  "C-": "bg-red-100     text-red-700     border-red-300",
++  "D":  "bg-red-200     text-red-800     border-red-400",
+ };
+ 
+ function PollCard({ poll }: { poll: HousePoll }) {
+@@ -18,33 +18,33 @@ function PollCard({ poll }: { poll: HousePoll }) {
+   const demPct = poll.dem ?? 0;
+   const repPct = poll.rep ?? 0;
+   const total = demPct + repPct || 100;
+-  const gradeStyle = poll.grade ? GRADE_STYLES[poll.grade] ?? "bg-gray-800 text-gray-400 border-gray-700" : "";
++  const gradeStyle = poll.grade ? GRADE_STYLES[poll.grade] ?? "bg-black/5 text-ink-muted border-ink/15" : "";
+ 
+   return (
+-    <div className="w-full h-full bg-gray-900 border border-gray-800 rounded-xl p-2.5 flex flex-col justify-between gap-1.5">
++    <div className="w-full h-full bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-2.5 flex flex-col justify-between gap-1.5">
+       <div className="flex items-start justify-between gap-1">
+-        <span className="text-xs font-bold text-white">{poll.state}-{poll.district}</span>
++        <span className="text-xs font-bold text-ink">{poll.state}-{poll.district}</span>
+         {poll.grade && (
+           <span className={`text-[9px] font-bold border rounded px-1 py-px ${gradeStyle}`}>
+             {poll.grade}
+           </span>
+         )}
+       </div>
+-      <p className="text-[10px] text-gray-400 truncate">{poll.pollster}</p>
++      <p className="text-[10px] text-ink-muted truncate">{poll.pollster}</p>
+       {/* D/R split bar */}
+       <div className="h-1.5 rounded-full overflow-hidden flex">
+-        <div className="bg-red-600" style={{ width: `${(repPct / total) * 100}%` }} />
+-        <div className="bg-blue-600" style={{ width: `${(demPct / total) * 100}%` }} />
++        <div className="bg-poll-red-bar" style={{ width: `${(repPct / total) * 100}%` }} />
++        <div className="bg-poll-blue-bar" style={{ width: `${(demPct / total) * 100}%` }} />
+       </div>
+       <div className="flex items-center justify-between text-[9px]">
+-        <span className="text-red-400">R {poll.rep?.toFixed(0)}%</span>
+-        <span className={margin != null ? (margin > 0 ? "text-blue-400" : "text-red-400") : "text-gray-600"}>
++        <span className="text-poll-red">R {poll.rep?.toFixed(0)}%</span>
++        <span className={margin != null ? (margin > 0 ? "text-poll-blue" : "text-poll-red") : "text-ink-muted"}>
+           {margin != null ? (margin > 0 ? `D+${margin.toFixed(1)}` : `R+${(-margin).toFixed(1)}`) : "—"}
+         </span>
+-        <span className="text-blue-400">D {poll.dem?.toFixed(0)}%</span>
++        <span className="text-poll-blue">D {poll.dem?.toFixed(0)}%</span>
+       </div>
+       {poll.end_date && (
+-        <p className="text-[9px] text-gray-600">
++        <p className="text-[9px] text-ink-muted">
+           {new Date(poll.end_date).toLocaleDateString([], { month: "short", day: "numeric" })}
+           {poll.sample_size ? ` · n=${poll.sample_size.toLocaleString()}` : ""}
+           {poll.population ? ` ${poll.population}` : ""}
+@@ -58,22 +58,22 @@ function AggregatorCard({ b }: { b: GenericBallot }) {
+   const margin = b.dem - b.rep;
+   const total = b.dem + b.rep;
+   return (
+-    <div className="w-full h-full bg-gray-900 border border-gray-800 rounded-xl p-2.5 flex flex-col justify-between gap-1.5">
++    <div className="w-full h-full bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-2.5 flex flex-col justify-between gap-1.5">
+       <div className="flex items-center justify-between">
+-        <span className="text-[9px] text-gray-500 uppercase tracking-wider">Generic Ballot</span>
+-        <span className="text-[9px] bg-gray-800 text-gray-400 border border-gray-700 rounded px-1">Avg</span>
++        <span className="text-[9px] text-ink-muted uppercase tracking-wider">Generic Ballot</span>
++        <span className="text-[9px] bg-black/5 text-ink-muted border border-ink/15 rounded px-1">Avg</span>
+       </div>
+-      <p className="text-[10px] text-gray-300 truncate">{b.source.replace(/\[\[|\]\]/g, "").split("|")[0]}</p>
++      <p className="text-[10px] text-ink truncate">{b.source.replace(/\[\[|\]\]/g, "").split("|")[0]}</p>
+       <div className="h-1.5 rounded-full overflow-hidden flex">
+-        <div className="bg-red-600" style={{ width: `${(b.rep / total) * 100}%` }} />
+-        <div className="bg-blue-600" style={{ width: `${(b.dem / total) * 100}%` }} />
++        <div className="bg-poll-red-bar" style={{ width: `${(b.rep / total) * 100}%` }} />
++        <div className="bg-poll-blue-bar" style={{ width: `${(b.dem / total) * 100}%` }} />
+       </div>
+       <div className="flex items-center justify-between text-[9px]">
+-        <span className="text-red-400">R {b.rep.toFixed(1)}%</span>
+-        <span className={margin > 0 ? "text-blue-400" : "text-red-400"}>
++        <span className="text-poll-red">R {b.rep.toFixed(1)}%</span>
++        <span className={margin > 0 ? "text-poll-blue" : "text-poll-red"}>
+           {margin > 0 ? `D+${margin.toFixed(1)}` : `R+${(-margin).toFixed(1)}`}
+         </span>
+-        <span className="text-blue-400">D {b.dem.toFixed(1)}%</span>
++        <span className="text-poll-blue">D {b.dem.toFixed(1)}%</span>
+       </div>
+     </div>
+   );
+@@ -90,7 +90,7 @@ export function PollCarousel({ polls, ballot }: Props) {
+   return (
+     <div>
+       {!hasPolls && (
+-        <p className="text-[10px] text-gray-600 mb-2">
++        <p className="text-[10px] text-ink-muted mb-2">
+           No district polls yet — showing national generic ballot aggregators.
+           Individual polls will appear here as they're published.
+         </p>
+diff --git a/frontend/src/components/RecentPollsList.tsx b/frontend/src/components/RecentPollsList.tsx
+index 2b2a2b1..df2ab75 100644
+--- a/frontend/src/components/RecentPollsList.tsx
++++ b/frontend/src/components/RecentPollsList.tsx
+@@ -10,33 +10,33 @@ function fmtDates(p: VoteHubPoll): string {
+ function PollRow({ poll }: { poll: VoteHubPoll }) {
+   const isApproval = poll.poll_type === "approval";
+   return (
+-    <div className="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm">
++    <div className="flex items-center gap-3 bg-glass-panel border border-glass-border-soft rounded-[14px] shadow-[0_2px_8px_rgba(74,61,112,0.06)] px-3 py-2 text-sm">
+       <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+-        isApproval ? "bg-violet-900/50 text-violet-300" : "bg-blue-900/50 text-blue-300"
++        isApproval ? "bg-poll-purple-bg text-poll-purple" : "bg-blue-100 text-poll-blue"
+       }`}>
+         {isApproval ? "APPROVAL" : "GENERIC"}
+       </span>
+-      <span className="flex-1 text-gray-300 truncate">
++      <span className="flex-1 text-ink truncate">
+         {poll.pollster}
+-        {poll.sponsors.length > 0 && <span className="text-gray-600"> / {poll.sponsors[0]}</span>}
++        {poll.sponsors.length > 0 && <span className="text-ink-muted"> / {poll.sponsors[0]}</span>}
+       </span>
+-      <span className="text-xs text-gray-600 hidden sm:inline">{fmtDates(poll)}</span>
++      <span className="text-xs text-ink-muted hidden sm:inline">{fmtDates(poll)}</span>
+       {poll.sample_size && (
+-        <span className="text-xs text-gray-600 hidden md:inline">
++        <span className="text-xs text-ink-muted hidden md:inline">
+           n={poll.sample_size.toLocaleString()}{poll.population ? ` ${poll.population.toUpperCase()}` : ""}
+         </span>
+       )}
+       {isApproval ? (
+         <span className="font-mono text-xs">
+-          <span className="text-emerald-400">{poll.approve?.toFixed(0) ?? "—"}</span>
+-          <span className="text-gray-600"> / </span>
+-          <span className="text-red-400">{poll.disapprove?.toFixed(0) ?? "—"}</span>
++          <span className="text-poll-positive">{poll.approve?.toFixed(0) ?? "—"}</span>
++          <span className="text-ink-muted"> / </span>
++          <span className="text-poll-red">{poll.disapprove?.toFixed(0) ?? "—"}</span>
+         </span>
+       ) : (
+         <span className="font-mono text-xs">
+-          <span className="text-blue-400">D {poll.dem?.toFixed(0) ?? "—"}</span>
+-          <span className="text-gray-600"> / </span>
+-          <span className="text-red-400">R {poll.rep?.toFixed(0) ?? "—"}</span>
++          <span className="text-poll-blue">D {poll.dem?.toFixed(0) ?? "—"}</span>
++          <span className="text-ink-muted"> / </span>
++          <span className="text-poll-red">R {poll.rep?.toFixed(0) ?? "—"}</span>
+         </span>
+       )}
+     </div>
+@@ -56,7 +56,7 @@ export function RecentPollsList() {
+ 
+   return (
+     <div className="space-y-2">
+-      <p className="text-xs text-gray-600 uppercase tracking-wider">Latest National Polls — VoteHub</p>
++      <p className="text-xs text-ink-muted uppercase tracking-wider">Latest National Polls — VoteHub</p>
+       <div className="space-y-1.5">
+         {polls.map(p => <PollRow key={p.votehub_id} poll={p} />)}
+       </div>
+diff --git a/frontend/src/components/SourcesDisclosure.tsx b/frontend/src/components/SourcesDisclosure.tsx
+index 5d1296d..5d53d37 100644
+--- a/frontend/src/components/SourcesDisclosure.tsx
++++ b/frontend/src/components/SourcesDisclosure.tsx
+@@ -43,22 +43,22 @@ export function SourcesDisclosure() {
+   const [open, setOpen] = useState(false);
+ 
+   return (
+-    <div className="border-t border-gray-800 pt-6 mt-2">
++    <div className="border-t border-ink/10 pt-6 mt-2">
+       <button
+         onClick={() => setOpen(o => !o)}
+-        className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
++        className="text-xs text-ink-muted hover:text-ink transition-colors"
+       >
+         {open ? "▾ Hide data sources" : "▸ Show data sources"}
+       </button>
+       {open && (
+-        <div className="border border-gray-800 rounded-xl p-4 mt-3 space-y-3">
++        <div className="bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-4 mt-3 space-y-3">
+           {SOURCES.map(s => (
+             <div key={s.label} className="text-xs leading-relaxed">
+               <div className="flex items-baseline justify-between gap-3">
+-                <span className="font-semibold text-gray-300">{s.label}</span>
+-                <span className="text-[10px] text-gray-600 whitespace-nowrap">{s.cadence}</span>
++                <span className="font-semibold text-ink">{s.label}</span>
++                <span className="text-[10px] text-ink-muted whitespace-nowrap">{s.cadence}</span>
+               </div>
+-              <p className="text-gray-500">{s.detail}</p>
++              <p className="text-ink-muted">{s.detail}</p>
+             </div>
+           ))}
+         </div>
+diff --git a/frontend/src/components/VoteHubApprovalCard.tsx b/frontend/src/components/VoteHubApprovalCard.tsx
+index 9959fad..13f35d9 100644
+--- a/frontend/src/components/VoteHubApprovalCard.tsx
++++ b/frontend/src/components/VoteHubApprovalCard.tsx
+@@ -6,7 +6,7 @@ export function VoteHubApprovalCard() {
+   const { questions } = useEconQuestions();
+ 
+   if (loading) {
+-    return <div className="h-28 bg-gray-900 rounded-xl animate-pulse" />;
++    return <div className="h-28 bg-glass-panel-nested rounded-2xl animate-pulse" />;
+   }
+   const avg = data?.average ?? null;
+   if (!avg) return null;
+@@ -19,23 +19,23 @@ export function VoteHubApprovalCard() {
+     .map(p => (p.approve as number) - (p.disapprove as number));
+ 
+   return (
+-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
++    <div className="bg-glass-panel backdrop-blur-lg border border-glass-border rounded-2xl shadow-[0_4px_16px_rgba(74,61,112,0.08)] p-4">
+       <div className="flex items-center justify-between mb-2">
+-        <p className="text-xs text-gray-600 uppercase tracking-wider">Trump Approval — VoteHub Live Average</p>
+-        <p className="text-[10px] text-gray-600">{avg.n_polls} polls · last {avg.window_days} days</p>
++        <p className="text-xs text-ink-muted uppercase tracking-wider">Trump Approval — VoteHub Live Average</p>
++        <p className="text-[10px] text-ink-muted">{avg.n_polls} polls · last {avg.window_days} days</p>
+       </div>
+       <div className="flex items-end justify-between gap-4">
+         <div>
+           <div className="flex items-baseline gap-3">
+-            <span className={`text-4xl font-bold ${avg.net < 0 ? "text-red-400" : "text-emerald-400"}`}>
++            <span className={`text-4xl font-bold ${avg.net < 0 ? "text-poll-red" : "text-poll-positive"}`}>
+               {avg.net > 0 ? "+" : ""}{avg.net.toFixed(1)}
+             </span>
+-            <span className="text-sm text-gray-400">
++            <span className="text-sm text-ink-muted">
+               {avg.approve.toFixed(1)}% approve · {avg.disapprove.toFixed(1)}% disapprove
+             </span>
+           </div>
+           {econNet !== null && (
+-            <p className="text-xs text-gray-600 mt-1">
++            <p className="text-xs text-ink-muted mt-1">
+               Cross-check: Economist/YouGov net {econNet > 0 ? "+" : ""}{econNet.toFixed(1)}
+               {" · "}delta {(avg.net - econNet) > 0 ? "+" : ""}{(avg.net - econNet).toFixed(1)}
+             </p>
+@@ -44,7 +44,7 @@ export function VoteHubApprovalCard() {
+         {nets.length >= 2 && (
+           <div className="text-right">
+             <MiniSparkline values={nets} width={160} height={40} />
+-            <p className="text-[10px] text-gray-600 mt-0.5">net, last {nets.length} polls</p>
++            <p className="text-[10px] text-ink-muted mt-0.5">net, last {nets.length} polls</p>
+           </div>
+         )}
+       </div>
+diff --git a/frontend/src/pages/PollsPage.tsx b/frontend/src/pages/PollsPage.tsx
+index 0391350..d25a296 100644
+--- a/frontend/src/pages/PollsPage.tsx
++++ b/frontend/src/pages/PollsPage.tsx
+@@ -16,13 +16,13 @@ export function PollsPage() {
+   const loading = pollsLoading || distLoading || ballotLoading;
+ 
+   return (
+-    <div className="min-h-screen bg-gray-950">
++    <div className="min-h-screen bg-glass-base">
+       <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+ 
+         {/* Header */}
+         <div className="space-y-1">
+-          <h2 className="text-xl font-bold text-white tracking-tight">2026 House Polling</h2>
+-          <p className="text-xs text-gray-500">
++          <h2 className="text-xl font-bold text-ink tracking-tight">2026 House Polling</h2>
++          <p className="text-xs text-ink-muted">
+             All {districts.length} House districts ·{" "}
+             {polls.length > 0 ? `${polls.length} polls` : "Individual district polls loading as cycle progresses"}
+           </p>
+@@ -40,14 +40,14 @@ export function PollsPage() {
+ 
+         {/* District hex cartogram + click-detail panel */}
+         <div className="space-y-2">
+-          <p className="text-xs text-gray-600 uppercase tracking-wider">
++          <p className="text-xs text-ink-muted uppercase tracking-wider">
+             House Districts — Hex Cartogram
+           </p>
+-          <p className="text-[10px] text-gray-700">
++          <p className="text-[10px] text-ink-muted">
+             Every district equal-size, colored by 2024 presidential lean · click any district for candidates &amp; fundraising
+           </p>
+           {distLoading ? (
+-            <div className="h-96 bg-gray-900 rounded-xl animate-pulse" />
++            <div className="h-96 bg-glass-panel-nested rounded-2xl animate-pulse" />
+           ) : (
+             <DistrictMap districts={districts} />
+           )}
+@@ -55,9 +55,9 @@ export function PollsPage() {
+ 
+         {/* Poll carousel */}
+         <div className="space-y-2">
+-          <p className="text-xs text-gray-600 uppercase tracking-wider">Recent Polls</p>
++          <p className="text-xs text-ink-muted uppercase tracking-wider">Recent Polls</p>
+           {loading ? (
+-            <div className="h-24 bg-gray-900 rounded-xl animate-pulse" />
++            <div className="h-24 bg-glass-panel-nested rounded-2xl animate-pulse" />
+           ) : (
+             <PollCarousel polls={polls} ballot={ballot} />
+           )}
+diff --git a/frontend/tailwind.config.js b/frontend/tailwind.config.js
+index 41895a5..7fde662 100644
+--- a/frontend/tailwind.config.js
++++ b/frontend/tailwind.config.js
+@@ -7,6 +7,34 @@ export default {
+         sans: ["Inter", "system-ui", "sans-serif"],
+         serif: ["Georgia", "serif"],
+       },
++      // Polling-page "liquid glass" theme tokens (see docs/features/polling-page-glass-theme).
++      // Additive only — no other page references these; the dark theme stays on the stock gray-* scale.
++      colors: {
++        glass: {
++          base: "#e9e3f6",
++          panel: "rgba(255,255,255,0.55)",
++          "panel-nested": "rgba(255,255,255,0.4)",
++          border: "rgba(255,255,255,0.8)",
++          "border-soft": "rgba(255,255,255,0.7)",
++        },
++        ink: {
++          DEFAULT: "#241f33",
++          muted: "#544a6e",
++        },
++        poll: {
++          red: "#a83c37",
++          "red-bar": "#c0453f",
++          blue: "#2d5390",
++          "blue-bar": "#3763a8",
++          positive: "#047857",
++          amber: "#b45309",
++          "amber-bg": "#fef3c7",
++          "amber-border": "#fcd34d",
++          purple: "#7e22ce",
++          "purple-bar": "#9333ea",
++          "purple-bg": "#f3e8ff",
++        },
++      },
+     },
+   },
+   plugins: [],

@@ -75,12 +75,11 @@ interface Props {
   districts: DistrictData[];
 }
 
-function CandidateRow({ c, max, state, openSeat }: { c: DistrictCandidate; max: number; state: string; openSeat: boolean }) {
+function CandidateRow({ c, max, state }: { c: DistrictCandidate; max: number; state: string }) {
   const w = max > 0 && c.fundraising_total ? Math.round((c.fundraising_total / max) * 100) : 0;
   const col = partyColor(c.party);
   const fec = fecUrl(c.fec_id);
-  // Suppress the "inc" badge on an open seat — the sitting member isn't running.
-  const showInc = c.incumbent_challenge === "I" && !openSeat;
+  const showInc = c.incumbent_challenge === "I";
   return (
     <div className="mb-2.5">
       <div className="flex items-center gap-1.5 text-[13px] mb-0.5">
@@ -106,15 +105,16 @@ function CandidateRow({ c, max, state, openSeat }: { c: DistrictCandidate; max: 
 }
 
 function DistrictDetail({ d }: { d: DistrictData }) {
-  // Headline matchup: normally the incumbent for each party (so a primary
-  // challenger who out-raised the sitting member doesn't bury them), else the
-  // best-funded. But on an OPEN seat the incumbent isn't running, so we don't
-  // elevate them — headline the best-funded instead (the likely nominee).
-  // candidates arrive fundraising-sorted, so [0] is the top-funded.
+  // Headline matchup: the incumbent for each party (so a primary challenger who
+  // out-raised the sitting member doesn't bury them), else the best-funded.
+  // candidates arrive fundraising-sorted, so [0] is the top-funded. On an open
+  // seat the API has already dropped the departing member, so no candidate
+  // carries the incumbent flag and this falls through to the best-funded — the
+  // likely nominee.
   const dems = d.candidates.filter(c => (c.party || "").toUpperCase().startsWith("DEM"));
   const reps = d.candidates.filter(c => (c.party || "").toUpperCase().startsWith("REP"));
   const pick = (arr: DistrictCandidate[]) =>
-    (d.open_seat ? undefined : arr.find(c => c.incumbent_challenge === "I")) || arr[0];
+    arr.find(c => c.incumbent_challenge === "I") || arr[0];
   const headline = [pick(dems), pick(reps)].filter(Boolean) as DistrictCandidate[];
   const maxRaise = Math.max(1, ...headline.map(c => c.fundraising_total || 0));
   const headlineNames = new Set(headline.map(c => c.name));
@@ -146,7 +146,7 @@ function DistrictDetail({ d }: { d: DistrictData }) {
       )}
 
       {headline.length > 0 ? (
-        <>{headline.map(c => <CandidateRow key={c.name} c={c} max={maxRaise} state={d.state} openSeat={d.open_seat} />)}</>
+        <>{headline.map(c => <CandidateRow key={c.name} c={c} max={maxRaise} state={d.state} />)}</>
       ) : (
         <p className="text-[12px] text-ink-muted">No major-party candidates on file yet.</p>
       )}

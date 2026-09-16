@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Candidate, CompetitiveDistrict, HousePoll, HouseRetirement
 from app.elections.services.house_polls import fetch_generic_ballot
+from app.elections.services.names import same_person
 from app.elections.services.votehub import compute_average as compute_votehub_average
 
 router = APIRouter(prefix="/api/polls", tags=["polls"])
@@ -110,6 +111,27 @@ class DepartingIncumbent(BaseModel):
     reason: Optional[str]
 
 
+def _is_departing(cand, departing_name: str) -> bool:
+    """Is this FEC candidate record the member vacating the seat?
+
+    FEC keeps a departing member on file as an active candidate, with the money
+    they had already raised, so an open-seat district would otherwise list the
+    person leaving it as a contender. Names have to bridge FEC's
+    "GOLDEN, JARED F" and Wikipedia's "Jared Golden".
+
+    Surname plus given name is the normal test. An FEC "I" (incumbent) flag
+    plus a surname match is enough on its own: a district has exactly one
+    incumbent, and if that seat is open, they are by definition the one
+    leaving — which also covers a member filed under a name the retirements
+    list spells differently.
+    """
+    if same_person(departing_name, cand.name):
+        return True
+    return cand.incumbent_challenge == "I" and same_person(
+        departing_name, cand.name, require_given=False
+    )
+
+
 class DistrictOut(BaseModel):
     state: str
     district: str                         # "1".."52" or "AL" (at-large)
@@ -163,10 +185,14 @@ def get_house_districts(db: Session = Depends(get_db)):
             name=ret.member_name, party=ret.party, reason=ret.reason,
         ) if ret else None
 
-        clist = sorted(
-            cands.get((state, di), []),
-            key=lambda c: -(c.fundraising_total or 0.0),
-        )
+        district_cands = cands.get((state, di), [])
+        # An open seat's departing member is reported in `departing_incumbent`,
+        # never as one of the candidates running for the seat they are leaving.
+        if ret:
+            district_cands = [
+                c for c in district_cands if not _is_departing(c, ret.member_name)
+            ]
+        clist = sorted(district_cands, key=lambda c: -(c.fundraising_total or 0.0))
         plist = polls.get((state, di), [])
         latest = max(
             plist,

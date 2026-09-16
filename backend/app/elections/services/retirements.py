@@ -32,7 +32,7 @@ HEADERS = {"User-Agent": "SituationMonitor/1.0 (slittlefield8@gmail.com)"}
 
 # #{{ushr|<ST>|<DIST>|...}}: [[<Member>(|display)]] <reason...>
 _ROW = re.compile(r"\{\{ushr\|([A-Z]{2})\|([A-Za-z0-9]+)\|[^}]*\}\}\s*:\s*"
-                  r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]\s*(.*)")
+                  r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]\s*(.*)")
 
 
 def _district_int(d: str) -> int:
@@ -72,11 +72,15 @@ def parse_retirements(wikitext: str) -> list:
         m = _ROW.search(line)
         if not m:
             continue
-        st, dist, name, reason = m.groups()
+        st, dist, target, display, reason = m.groups()
         try:
             district = _district_int(dist)
         except ValueError:
             continue
+        # Prefer the piped display text ("Daniel Webster") over the wikilink
+        # target ("Daniel Webster (Florida politician)") — the target's
+        # disambiguation suffix otherwise breaks the open-seat name match.
+        name = display if display is not None else target
         rows.append({
             "state": st, "district": district, "party": party,
             "name": name.strip(), "reason": _clean_reason(reason),
