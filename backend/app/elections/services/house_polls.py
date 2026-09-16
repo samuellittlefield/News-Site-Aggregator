@@ -717,6 +717,7 @@ async def fetch_district_polls(db: Session) -> int:
                             db.add(_housepoll_from_extract(p))
                             total += 1
             except Exception as e:
+                db.rollback()
                 logger.warning("District poll fetch failed for state %s: %s", state, e)
 
     db.commit()
