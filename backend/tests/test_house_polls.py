@@ -27,6 +27,7 @@ from typing import Optional
 
 import httpx
 import pytest
+from sqlalchemy import text
 
 from app import scheduler
 from app.elections.services import house_polls
@@ -206,6 +207,45 @@ async def test_one_state_failure_does_not_block_others(db, respx_router, caplog)
     assert len(oh) == 0            # failing state contributed nothing
     assert total == 3
     assert all(p.source == "wikipedia" for p in pa)
+    assert any("OH" in r.getMessage() for r in caplog.records)
+
+
+# ── DB-level failure for one state must not poison the shared session (AC-8) ───
+
+async def test_one_state_db_error_does_not_poison_later_states(db, respx_router, caplog):
+    """A DB-level error (e.g. schema mismatch) for an early state must not leave
+    the shared session in an aborted-transaction state that then fails every
+    later state's queries too — reproduces a live incident where a missing
+    `house_polls.source` column made one bad state zero out all 50."""
+    respx_router.get(house_polls.WIKI_API).mock(
+        side_effect=_multi_state_responder(
+            {"Ohio": PA_SECTIONS, "Pennsylvania": PA_SECTIONS},
+            {"141": PA8_WIKITEXT},
+        )
+    )
+
+    # Poison the session's transaction on the first HousePoll query (Ohio's,
+    # since Ohio precedes Pennsylvania in STATE_NAMES) by running invalid SQL
+    # directly against the shared connection, then let real queries through.
+    real_query = db.query
+    poisoned = {"done": False}
+
+    def poisoning_query(*args, **kwargs):
+        if not poisoned["done"]:
+            poisoned["done"] = True
+            db.execute(text("SELECT * FROM this_table_does_not_exist_at_all"))
+        return real_query(*args, **kwargs)
+
+    db.query = poisoning_query
+
+    with caplog.at_level(logging.WARNING, logger="app.elections.services.house_polls"):
+        total = await house_polls.fetch_district_polls(db)
+
+    oh = db.query(HousePoll).filter(HousePoll.state == "OH").all()
+    pa = db.query(HousePoll).filter(HousePoll.state == "PA", HousePoll.district == 8).all()
+    assert len(oh) == 0            # the state that hit the DB error contributed nothing
+    assert len(pa) == 3            # a later state must still be fully processed
+    assert total == 3
     assert any("OH" in r.getMessage() for r in caplog.records)
 
 
