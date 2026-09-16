@@ -9,7 +9,6 @@ so each refresh fetches everything and upserts by VoteHub id.
 import logging
 import math
 import re
-import unicodedata
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -18,6 +17,12 @@ import httpx
 from sqlalchemy.orm import Session
 
 from app.models import Candidate, HousePoll, VoteHubPoll
+from app.elections.services.names import (
+    NAME_SUFFIXES as _NAME_SUFFIXES,
+    fec_name_parts as _fec_name_parts,
+    fold as _fold,
+    tokens as _tokens,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +132,6 @@ async def fetch_votehub_polls(db: Session) -> dict:
 # which is the *sponsor's* lean, not a candidate's party (AC-11).
 
 _SEAT_RE = re.compile(r"^([A-Z]{2})-(\d{1,2}|AL)$")
-_NAME_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v", "mr", "mrs", "ms", "dr"}
 
 # States with a single, at-large House seat. FEC stores these candidates at
 # district_number 0; VoteHub sends either "-AL" or, as seen live, "-01" for the
@@ -159,34 +163,6 @@ def _parse_seat(seat: Optional[str]) -> Optional[tuple[str, int]]:
 def _is_generic_ballot_poll(answers: list) -> bool:
     choices = [str(a.get("choice", "")).strip().lower() for a in answers]
     return bool(choices) and all(c in _GENERIC_LABELS for c in choices)
-
-
-def _fold(s: str) -> str:
-    """Unicode NFD, drop combining marks, lowercase, punctuation → space. Only
-    used for comparison — neither stored value nor the VoteHub answer is
-    mutated (AC-3)."""
-    nfd = unicodedata.normalize("NFD", s)
-    stripped = "".join(c for c in nfd if unicodedata.category(c) != "Mn")
-    return re.sub(r"[^a-z0-9]+", " ", stripped.lower())
-
-
-def _tokens(name: str) -> list[str]:
-    """Fold a name and split into tokens, dropping suffixes/honorifics."""
-    return [t for t in _fold(name).split() if t and t not in _NAME_SUFFIXES]
-
-
-def _fec_name_parts(name: str) -> tuple[list[str], list[str]]:
-    """FEC stores 'Last, First Middle' → (surname_tokens, given_tokens), split
-    on the first comma — the surname may itself be several tokens (AC-2b:
-    'De La Cruz', 'Van Orden', 'Miller-Meeks', 'von Wilpert', ...). No comma
-    present → fall back to treating the last token as the surname."""
-    if "," in name:
-        surname, given = name.split(",", 1)
-        return _tokens(surname), _tokens(given)
-    tokens = _tokens(name)
-    if not tokens:
-        return [], []
-    return tokens[-1:], tokens[:-1]
 
 
 def _district_candidates(db: Session, state: str, district: int) -> list[tuple[str, str]]:

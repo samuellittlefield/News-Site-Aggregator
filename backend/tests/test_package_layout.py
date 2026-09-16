@@ -6,9 +6,13 @@ are gone". A stale `.pyc` can make a deleted module importable for the wrong
 reason, so this is only meaningful with `__pycache__` cleared (done as part of
 every step in this ticket; CI starts clean regardless).
 
-TC-2: every module has exactly one home, matching the implementation plan's
-table exactly — routers 6/6/1, services 10/21/3 — with no basename duplicated
-across packages.
+TC-2: every module has exactly one home, with no basename duplicated across
+packages. The counts are a census, not a cap: the seam-split plan's table was
+routers 6/6/1, services 10/21/3, and elections/services went to 11 when
+`names.py` was added (shared candidate-name matching, pulled out of
+`votehub.py` so the district feed could use it too). Bump the number when a
+module is deliberately added or removed; a surprise change means something
+landed in the wrong package.
 """
 import importlib.util
 import pathlib
@@ -65,7 +69,7 @@ def test_service_counts_and_no_duplicate_basenames():
     elections = _basenames(APP_DIR / "elections" / "services")
     monitor = _basenames(APP_DIR / "monitor" / "services")
     shared = _basenames(APP_DIR / "shared" / "services")
-    assert len(elections) == 10, elections
+    assert len(elections) == 11, elections
     assert len(monitor) == 21, monitor
     assert len(shared) == 3, shared
     assert elections & monitor == set()
