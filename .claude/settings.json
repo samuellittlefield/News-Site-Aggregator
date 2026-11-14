@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(python -m pytest:*)",
-      "Bash(cd backend && python -m pytest:*)"
+      "Bash(pytest:*)",
+      "Bash(.venv/bin/pytest:*)",
+      "Bash(cd backend && python -m pytest:*)",
+      "Bash(cd backend && pytest:*)",
+      "Bash(cd backend && .venv/bin/pytest:*)"
     ]
   }
 }
